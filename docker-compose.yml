@@ -1,0 +1,112 @@
+# version: '3.8'
+
+# services:
+#   mongo:
+#     image: mongo:7
+#     container_name: wakriti-mongo
+#     restart: unless-stopped
+#     ports:
+#       - '27017:27017'
+#     volumes:
+#       - mongo-data:/data/db
+#     networks:
+#       - wakriti-network
+
+#   backend:
+#     build:
+#       context: ./backend
+#       dockerfile: Dockerfile
+#     container_name: wakriti-backend
+#     restart: unless-stopped
+#     env_file:
+#       - ./backend/.env
+#     environment:
+#       - MONGO_URI=mongodb://mongo:27017/wakriti
+#     depends_on:
+#       - mongo
+#     ports:
+#       - '5000:5000'
+#     networks:
+#       - wakriti-network
+
+#   frontend:
+#     build:
+#       context: ./frontend
+#       dockerfile: Dockerfile
+#     container_name: wakriti-frontend
+#     restart: unless-stopped
+#     ports:
+#       - '80:80'
+#     depends_on:
+#       - backend
+#     networks:
+#       - wakriti-network
+
+# networks:
+#   wakriti-network:
+#     driver: bridge
+
+# volumes:
+#   mongo-data:
+
+
+
+version: '3.8'
+
+services:
+  mongo:
+    image: mongo:7
+    container_name: wakriti-mongo
+    restart: unless-stopped
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_ROOT_USER}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_ROOT_PASSWORD}
+    volumes:
+      - mongo-data:/data/db
+    networks:
+      - wakriti-network
+    # No "ports:" — Mongo is only reachable from other containers on
+    # wakriti-network, never from the host or the internet.
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: wakriti-backend
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env
+    environment:
+      - MONGO_URI=mongodb://${MONGO_ROOT_USER}:${MONGO_ROOT_PASSWORD}@mongo:27017/wakriti?authSource=admin
+    depends_on:
+      - mongo
+    networks:
+      - wakriti-network
+    # No "ports:" — only the frontend/nginx container talks to this,
+    # over the internal docker network at http://backend:5000. Nothing
+    # outside the docker network can reach the API directly, bypassing
+    # nginx's rate limiting / TLS termination.
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: wakriti-frontend
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    depends_on:
+      - backend
+    networks:
+      - wakriti-network
+
+networks:
+  wakriti-network:
+    driver: bridge
+
+volumes:
+  mongo-data:

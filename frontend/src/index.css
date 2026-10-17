@@ -1,0 +1,35 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    @apply bg-sand-100 text-bamboo-800 font-sans antialiased dark:bg-bamboo-900 dark:text-sand-100;
+  }
+  h1, h2, h3, h4 {
+    @apply font-display;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply inline-flex items-center justify-center rounded-xl bg-bamboo-600 px-6 py-3 text-sm font-semibold text-white shadow-soft transition-all duration-200 hover:bg-bamboo-700 hover:shadow-soft-lg active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60;
+  }
+  .btn-secondary {
+    @apply inline-flex items-center justify-center rounded-xl border border-bamboo-600 bg-transparent px-6 py-3 text-sm font-semibold text-bamboo-600 transition-all duration-200 hover:bg-bamboo-50 active:scale-[0.98];
+  }
+  .input-field {
+    @apply w-full rounded-xl border border-sand-400 bg-white px-4 py-3 text-sm text-bamboo-800 shadow-sm transition-colors placeholder:text-bamboo-400 focus:border-bamboo-500 focus:outline-none focus:ring-2 focus:ring-bamboo-200 disabled:opacity-60;
+  }
+  .input-error {
+    @apply border-red-400 focus:border-red-500 focus:ring-red-200;
+  }
+  .card {
+    @apply rounded-2xl bg-white shadow-soft transition-shadow duration-200 hover:shadow-soft-lg;
+  }
+}

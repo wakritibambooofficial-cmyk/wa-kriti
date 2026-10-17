@@ -1,0 +1,17 @@
+{
+  "name": "Wa-Kriti | Premium Bamboo Living",
+  "short_name": "Wa-Kriti",
+  "description": "Premium handcrafted bamboo furniture, decor, and lifestyle products.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FAF7F0",
+  "theme_color": "#3F5B3E",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
