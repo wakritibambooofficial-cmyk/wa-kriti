@@ -630,8 +630,6 @@
 
 // export default AdminOrders;
 
-
-
 import { useState, useMemo, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Helmet } from 'react-helmet-async';
@@ -684,7 +682,7 @@ const DATE_PRESETS = [
 const PAGE_SIZE = 20;
 
 // ---------- branding / support ----------
-const LOGO_PATH = '/stamp.jpeg'; // file inside /public — change if your file name differs
+const LOGO_PATH = '/wakriti-logo.png'; // file inside /public — change if your file name differs
 const SUPPORT_PHONE = '9366431377';
 const SUPPORT_WA_LINK = 'https://wa.me/919366431377?text=Hi%2C%20I%20need%20help%20with%20an%20order.';
 const SUPPORT_EMAIL = 'wakriti.bambooofficial@gmail.com';
@@ -778,23 +776,20 @@ const buildInvoiceHTML = (orders) => {
           </tbody>
         </table>
 
-        <div class="totals">
-          <div class="row"><span>Subtotal</span><span>${formatMoney(subtotal)}</span></div>
-          <div class="row"><span>Shipping</span><span>${formatMoney(order.shippingCost || 0)}</span></div>
-          <div class="row"><span>Tax</span><span>${formatMoney(order.tax || 0)}</span></div>
-          <div class="row total"><span>Grand Total</span><span>${formatMoney(order.grandTotal)}</span></div>
+        <div class="totals-wrap">
+          <img src="${logo}" alt="" class="watermark" />
+          <div class="totals">
+            <div class="row"><span>Subtotal</span><span>${formatMoney(subtotal)}</span></div>
+            <div class="row"><span>Shipping</span><span>${formatMoney(order.shippingCost || 0)}</span></div>
+            <div class="row"><span>Tax</span><span>${formatMoney(order.tax || 0)}</span></div>
+            <div class="row total"><span>Grand Total</span><span>${formatMoney(order.grandTotal)}</span></div>
+          </div>
         </div>
 
-        <div class="auth-row">
-          <div class="stamp">
-            <img src="${logo}" alt="Authentic" />
-            <span>Authentic<br/>Wa-Kriti Product</span>
-          </div>
-          <div class="support">
-            <p class="label">Need help?</p>
-            <p class="muted">WhatsApp us at <a href="${SUPPORT_WA_LINK}">${SUPPORT_PHONE}</a></p>
-            <p class="muted">Write to us at <a href="mailto:${SUPPORT_EMAIL}">${SUPPORT_EMAIL}</a></p>
-          </div>
+        <div class="support">
+          <p class="label">Need help?</p>
+          <p class="muted">WhatsApp us at <a href="${SUPPORT_WA_LINK}">${SUPPORT_PHONE}</a></p>
+          <p class="muted">Write to us at <a href="mailto:${SUPPORT_EMAIL}">${SUPPORT_EMAIL}</a></p>
         </div>
 
         <p class="footer">Thank you for shopping with Wa-Kriti — handcrafted with care.</p>
@@ -821,14 +816,12 @@ const buildInvoiceHTML = (orders) => {
           table.items { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
           table.items th { text-align: left; font-size: 12px; text-transform: uppercase; color: #8a917f; border-bottom: 1px solid #ddd; padding: 8px; }
           table.items td { padding: 8px; border-bottom: 1px solid #eee; font-size: 14px; }
-          .totals { width: 260px; margin-left: auto; }
+          .totals-wrap { position: relative; margin-top: 8px; }
+          .watermark { position: absolute; top: 50%; left: 50%; width: 190px; height: 190px; object-fit: contain; transform: translate(-50%, -50%); opacity: 0.2; z-index: 0; pointer-events: none; }
+          .totals { position: relative; z-index: 1; width: 260px; margin-left: auto; }
           .totals .row { display: flex; justify-content: space-between; padding: 4px 0; font-size: 14px; }
           .totals .total { border-top: 2px solid #2d3327; margin-top: 6px; padding-top: 8px; font-weight: bold; font-size: 16px; }
-          .auth-row { display: flex; justify-content: space-between; align-items: center; margin-top: 32px; padding-top: 16px; border-top: 1px dashed #bbb; }
-          .stamp { display: flex; align-items: center; gap: 10px; border: 2px solid #2d3327; border-radius: 999px; padding: 6px 16px 6px 8px; transform: rotate(-3deg); }
-          .stamp img { width: 52px; height: 52px; object-fit: contain; }
-          .stamp span { font-size: 11px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; line-height: 1.3; color: #2d3327; }
-          .support { text-align: right; }
+          .support { text-align: right; margin-top: 32px; padding-top: 16px; border-top: 1px dashed #bbb; }
           .support a { color: #2d3327; text-decoration: none; font-weight: bold; }
           .footer { text-align: center; margin-top: 30px; font-size: 12px; color: #8a917f; }
           @media print { .page { padding: 20px; } }
