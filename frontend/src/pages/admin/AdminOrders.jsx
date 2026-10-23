@@ -682,7 +682,7 @@ const DATE_PRESETS = [
 const PAGE_SIZE = 20;
 
 // ---------- branding / support ----------
-const LOGO_PATH = '/wakriti-logo.png'; // file inside /public — change if your file name differs
+const LOGO_PATH = '/stamp.jpeg'; // file inside /public — change if your file name differs
 const SUPPORT_PHONE = '9366431377';
 const SUPPORT_WA_LINK = 'https://wa.me/919366431377?text=Hi%2C%20I%20need%20help%20with%20an%20order.';
 const SUPPORT_EMAIL = 'wakriti.bambooofficial@gmail.com';
