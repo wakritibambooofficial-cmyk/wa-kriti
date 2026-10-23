@@ -1,11 +1,27 @@
 
 
+
 // import { useState, useEffect } from 'react';
 // import { useParams, Link } from 'react-router-dom';
 // import { useQuery } from '@tanstack/react-query';
 // import { useSelector } from 'react-redux';
 // import { Helmet } from 'react-helmet-async';
-// import { FiHeart, FiMinus, FiPlus, FiTruck, FiShield, FiRefreshCw } from 'react-icons/fi';
+// import {
+//   FiHeart,
+//   FiMinus,
+//   FiPlus,
+//   FiTruck,
+//   FiShield,
+//   FiRefreshCw,
+//   FiPhone,
+//   FiMail,
+//   FiThumbsUp,
+//   FiLock,
+//   FiRepeat,
+//   FiFeather,
+//   FiDroplet,
+//   FiAward,
+// } from 'react-icons/fi';
 
 // import { productApi } from '../../services/productApi';
 // import { engagementApi } from '../../services/growthApi';
@@ -20,6 +36,37 @@
 // import EmptyState from '../../components/ui/EmptyState';
 // import { useCart } from '../../hooks/useCart';
 // import { useWishlist } from '../../hooks/useWishlist';
+
+// /* ------------------------------------------------------------------ */
+// /* Store-wide support details – replace with your real values          */
+// /* (or move to a shared config file / env vars)                        */
+// /* ------------------------------------------------------------------ */
+// const SUPPORT = {
+//   hours: 'Mon-Sat : 11:00 AM - 7:00 PM',
+//   whatsapp: '+91 00000 00000', // display text
+//   whatsappLink: '910000000000', // digits only, with country code
+//   email: 'contact@wa-kriti.com',
+// };
+
+// const WHY_CHOOSE_US = [
+//   { icon: FiShield, title: 'Quality Products', subtitle: '100% Premium' },
+//   { icon: FiThumbsUp, title: 'Customers', subtitle: '50K+ Happy' },
+//   { icon: FiTruck, title: 'Shipping', subtitle: 'Direct Shipping' },
+//   { icon: FiLock, title: 'Secure 100%', subtitle: 'Online Shopping' },
+// ];
+
+// /*
+//  * Sustainability features. Each product can switch them on/off with
+//  * product.sustainability = { reusable, compostable, bpaFree, durable }.
+//  * If a product has no `sustainability` object, all four show when the
+//  * product is marked isEcoFriendly.
+//  */
+// const SUSTAINABILITY_FEATURES = [
+//   { key: 'reusable', label: 'Reusable', icon: FiRepeat, note: 'Made to be used again and again.' },
+//   { key: 'compostable', label: 'Compostable', icon: FiFeather, note: 'Returns to the soil at end of life.' },
+//   { key: 'bpaFree', label: 'BPA Free', icon: FiDroplet, note: 'No harmful plastics or chemicals.' },
+//   { key: 'durable', label: 'Durable', icon: FiAward, note: 'Built to last, so less gets thrown away.' },
+// ];
 
 // const ProductDetail = () => {
 //   const { slug } = useParams();
@@ -83,6 +130,10 @@
 //       : 0;
 //   const isWishlisted = checkIsWishlisted(product._id);
 
+//   const activeSustainability = SUSTAINABILITY_FEATURES.filter((f) =>
+//     product.sustainability ? product.sustainability[f.key] : product.isEcoFriendly
+//   );
+
 //   const handleAddToCart = () => {
 //     addToCart({
 //       productId: product._id,
@@ -123,8 +174,8 @@
 //             <Link to={`/shop?category=${product.category._id}`} className="hover:underline">
 //               {product.category.name}
 //             </Link>{' '}
-//             {' > '} 
-//           </>  
+//             {' > '}
+//           </>
 //         )}
 //         <span className="text-bamboo-700">{product.name}</span>
 //       </div>
@@ -189,7 +240,7 @@
 //             )}
 
 //             {/* Quantity + actions */}
-//             <div className="mt-6 flex items-center gap-3"> 
+//             <div className="mt-6 flex items-center gap-3">
 //               <div className="flex items-center rounded-xl border border-sand-400">
 //                 <button
 //                   onClick={() => setQuantity((q) => Math.max(1, q - 1))}
@@ -232,8 +283,53 @@
 //               <InfoRow icon={FiShield} text={product.warranty || 'Quality guaranteed craftsmanship'} />
 //               <InfoRow icon={FiRefreshCw} text={product.returnPolicy || 'Easy returns within 7 days'} />
 //             </div>
+
+//             {/* Need help */}
+//             <HelpBlock />
+
+//             {/* Why choose us */}
+//             <div className="mt-6">
+//               <h2 className="border-b border-sand-300 pb-2 text-sm font-semibold text-bamboo-800">
+//                 Why choose us
+//               </h2>
+//               <div className="mt-3 grid grid-cols-2 gap-3">
+//                 {WHY_CHOOSE_US.map((item) => (
+//                   <WhyTile key={item.title} {...item} />
+//                 ))}
+//               </div>
+//             </div>
 //           </div>
 //         </div>
+
+//         {/* Sustainability / what makes this product unique */}
+//         {(activeSustainability.length > 0 || product.sustainabilityNote) && (
+//           <section className="mt-14" aria-labelledby="unique-heading">
+//             <h2
+//               id="unique-heading"
+//               className="border-b border-bamboo-700 pb-2 font-display text-xl font-semibold text-bamboo-800"
+//             >
+//               What makes this product unique
+//             </h2>
+
+//             {product.sustainabilityNote && (
+//               <p className="mt-4 max-w-3xl whitespace-pre-line text-sm leading-relaxed text-bamboo-600">
+//                 {product.sustainabilityNote}
+//               </p>
+//             )}
+
+//             {activeSustainability.length > 0 && (
+//               <ul className="mt-6 grid grid-cols-2 gap-6 sm:grid-cols-4">
+//                 {activeSustainability.map(({ key, label, icon: Icon, note }) => (
+//                   <li key={key} className="flex flex-col items-center text-center">
+//                     <Icon size={32} className="text-bamboo-700" aria-hidden="true" />
+//                     <span className="mt-3 text-sm font-semibold text-bamboo-800">{label}</span>
+//                     <span className="mt-1 text-xs text-bamboo-500">{note}</span>
+//                   </li>
+//                 ))}
+//               </ul>
+//             )}
+//           </section>
+//         )}
 
 //         {/* Description & specs */}
 //         <div className="mt-14 grid grid-cols-1 gap-10 lg:grid-cols-3">
@@ -311,6 +407,50 @@
 //   </div>
 // );
 
+// const HelpBlock = () => (
+//   <div className="mt-6 rounded-2xl border border-sand-300 bg-white p-5">
+//     <p className="text-sm font-semibold text-bamboo-800">
+//       Need help? <span className="font-normal text-bamboo-600">{SUPPORT.hours}</span>
+//     </p>
+//     <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+//       <a
+//         href={`https://wa.me/${SUPPORT.whatsappLink}?text=${encodeURIComponent('Hi, I need help with an order.')}`}
+//         target="_blank"
+//         rel="noopener noreferrer"
+//         className="flex items-start gap-3 text-sm text-bamboo-600 hover:text-bamboo-800"
+//       >
+//         <FiPhone size={18} className="mt-0.5 shrink-0 text-bamboo-500" />
+//         <span>
+//           WhatsApp us at
+//           <br />
+//           <span className="font-medium text-bamboo-800">{SUPPORT.whatsapp}</span>
+//         </span>
+//       </a>
+//       <a
+//         href={`mailto:${SUPPORT.email}`}
+//         className="flex items-start gap-3 text-sm text-bamboo-600 hover:text-bamboo-800"
+//       >
+//         <FiMail size={18} className="mt-0.5 shrink-0 text-bamboo-500" />
+//         <span>
+//           Write to us at
+//           <br />
+//           <span className="break-all font-medium text-bamboo-800">{SUPPORT.email}</span>
+//         </span>
+//       </a>
+//     </div>
+//   </div>
+// );
+
+// const WhyTile = ({ icon: Icon, title, subtitle }) => (
+//   <div className="flex items-center gap-3 rounded-lg bg-bamboo-800 px-4 py-3 text-white">
+//     <Icon size={18} className="shrink-0" aria-hidden="true" />
+//     <div className="leading-tight">
+//       <p className="text-sm font-semibold">{title}</p>
+//       <p className="mt-0.5 text-xs text-white/80">{subtitle}</p>
+//     </div>
+//   </div>
+// );
+
 // const SpecRow = ({ label, value }) => {
 //   if (!value) return null;
 //   return (
@@ -322,6 +462,7 @@
 // };
 
 // export default ProductDetail;
+
 
 
 
@@ -349,6 +490,7 @@ import {
 
 import { productApi } from '../../services/productApi';
 import { engagementApi } from '../../services/growthApi';
+import { cmsApi } from '../../services/cmsApi';
 import ProductGallery from '../../components/product/ProductGallery';
 import ProductCard from '../../components/product/ProductCard';
 import ShareButtons from '../../components/product/ShareButtons';
@@ -362,14 +504,16 @@ import { useCart } from '../../hooks/useCart';
 import { useWishlist } from '../../hooks/useWishlist';
 
 /* ------------------------------------------------------------------ */
-/* Store-wide support details – replace with your real values          */
-/* (or move to a shared config file / env vars)                        */
+/* Support details now come from Website Settings (Admin > Settings). */
+/* Only the opening hours fall back to a default if not set there.    */
 /* ------------------------------------------------------------------ */
-const SUPPORT = {
-  hours: 'Mon-Sat : 11:00 AM - 7:00 PM',
-  whatsapp: '+91 00000 00000', // display text
-  whatsappLink: '910000000000', // digits only, with country code
-  email: 'contact@wa-kriti.com',
+const DEFAULT_HOURS = 'Mon-Sat : 11:00 AM - 7:00 PM';
+
+// Digits only, with country code, as required by wa.me links.
+// A 10-digit Indian number gets "91" added in front.
+const toWhatsappDigits = (phone = '') => {
+  const digits = String(phone).replace(/\D/g, '');
+  return digits.length === 10 ? `91${digits}` : digits;
 };
 
 const WHY_CHOOSE_US = [
@@ -731,39 +875,60 @@ const InfoRow = ({ icon: Icon, text }) => (
   </div>
 );
 
-const HelpBlock = () => (
-  <div className="mt-6 rounded-2xl border border-sand-300 bg-white p-5">
-    <p className="text-sm font-semibold text-bamboo-800">
-      Need help? <span className="font-normal text-bamboo-600">{SUPPORT.hours}</span>
-    </p>
-    <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-      <a
-        href={`https://wa.me/${SUPPORT.whatsappLink}?text=${encodeURIComponent('Hi, I need help with an order.')}`}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="flex items-start gap-3 text-sm text-bamboo-600 hover:text-bamboo-800"
-      >
-        <FiPhone size={18} className="mt-0.5 shrink-0 text-bamboo-500" />
-        <span>
-          WhatsApp us at
-          <br />
-          <span className="font-medium text-bamboo-800">{SUPPORT.whatsapp}</span>
-        </span>
-      </a>
-      <a
-        href={`mailto:${SUPPORT.email}`}
-        className="flex items-start gap-3 text-sm text-bamboo-600 hover:text-bamboo-800"
-      >
-        <FiMail size={18} className="mt-0.5 shrink-0 text-bamboo-500" />
-        <span>
-          Write to us at
-          <br />
-          <span className="break-all font-medium text-bamboo-800">{SUPPORT.email}</span>
-        </span>
-      </a>
+const HelpBlock = () => {
+  // Same query key as the Contact page, so the data is shared from cache.
+  const { data: settings } = useQuery({
+    queryKey: ['website-settings'],
+    queryFn: () => cmsApi.getSettings(),
+    select: (res) => res.data.data.settings,
+  });
+
+  const phone = settings?.whatsappNumber || settings?.contactPhone || '';
+  const email = settings?.contactEmail || '';
+  const hours = settings?.supportHours || DEFAULT_HOURS;
+  const whatsappDigits = toWhatsappDigits(phone);
+
+  // Nothing to show until the admin has filled in the settings.
+  if (!phone && !email) return null;
+
+  return (
+    <div className="mt-6 rounded-2xl border border-sand-300 bg-white p-5">
+      <p className="text-sm font-semibold text-bamboo-800">
+        Need help? <span className="font-normal text-bamboo-600">{hours}</span>
+      </p>
+      <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+        {phone && (
+          <a
+            href={`https://wa.me/${whatsappDigits}?text=${encodeURIComponent('Hi, I need help with an order.')}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-start gap-3 text-sm text-bamboo-600 hover:text-bamboo-800"
+          >
+            <FiPhone size={18} className="mt-0.5 shrink-0 text-bamboo-500" />
+            <span>
+              WhatsApp us at
+              <br />
+              <span className="font-medium text-bamboo-800">{phone}</span>
+            </span>
+          </a>
+        )}
+        {email && (
+          <a
+            href={`mailto:${email}`}
+            className="flex items-start gap-3 text-sm text-bamboo-600 hover:text-bamboo-800"
+          >
+            <FiMail size={18} className="mt-0.5 shrink-0 text-bamboo-500" />
+            <span>
+              Write to us at
+              <br />
+              <span className="break-all font-medium text-bamboo-800">{email}</span>
+            </span>
+          </a>
+        )}
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 const WhyTile = ({ icon: Icon, title, subtitle }) => (
   <div className="flex items-center gap-3 rounded-lg bg-bamboo-800 px-4 py-3 text-white">
