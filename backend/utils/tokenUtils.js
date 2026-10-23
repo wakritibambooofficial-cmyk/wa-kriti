@@ -61,12 +61,12 @@ const verifyRefreshToken = (token) => jwt.verify(token, process.env.JWT_REFRESH_
  * Cookie options shared by set and clear.
  * In production the frontend (Vercel) and backend (Render) are on different
  * sites, so the cookie must be SameSite=None and Secure to be sent cross-site.
- * clearCookie must use the same options, or the browser will not remove it.
+ * clearCookie must use the same options, or the browser will not removit e it.
  */
 const getCookieOptions = () => {
   const isProd = process.env.NODE_ENV === 'production';
   return {
-    httpOnly: true,
+    httpOnly: true, 
     secure: isProd,
     sameSite: isProd ? 'none' : 'lax',
     path: '/api/v1/auth',
