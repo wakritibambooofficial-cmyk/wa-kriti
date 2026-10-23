@@ -107,7 +107,6 @@
 // };
 
 // export default GovernmentAffiliations;
-
 /**
  * Government Affiliations – continuous, auto-scrolling logo slider
  * with the name shown to the right of each logo.
@@ -188,15 +187,15 @@ const GovernmentAffiliations = ({ title = 'Government Affiliations' }) => {
       `}</style>
 
       {/* Highlighted rectangle box, bordered top & bottom like a banner strip */}
-      <div className="mx-auto max-w-5xl border-y-2 border-bamboo-300 px-4 py-6 sm:px-6">
+      <div className="mx-auto max-w-7xl border-y-2 border-bamboo-300 px-4 py-6 sm:px-6">
         <h2 className="text-center font-display text-xl font-bold text-bamboo-800 sm:text-2xl">
           {title}
         </h2>
 
-        <div className="wk-marquee relative mx-auto mt-5 max-w-5xl overflow-hidden">
+        <div className="wk-marquee relative mx-auto mt-5 max-w-7xl overflow-hidden">
           {/* soft fade on both edges */}
-          <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-10 bg-gradient-to-r from-bamboo-50 to-transparent sm:w-20" />
-          <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-10 bg-gradient-to-l from-bamboo-50 to-transparent sm:w-20" />
+          <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-16 bg-gradient-to-r from-bamboo-50 to-transparent sm:w-32" />
+          <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-16 bg-gradient-to-l from-bamboo-50 to-transparent sm:w-32" />
 
           <div
             className="wk-marquee-track flex w-max"
