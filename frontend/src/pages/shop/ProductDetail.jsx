@@ -896,7 +896,8 @@ const HelpBlock = () => {
       <p className="text-sm font-semibold text-bamboo-800">
         Need help? <span className="font-normal text-bamboo-600">{hours}</span>
       </p>
-      <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+
+      <div className="mt-3 grid grid-cols-1 gap-3">
         {phone && (
           <a
             href={`https://wa.me/${whatsappDigits}?text=${encodeURIComponent('Hi, I need help with an order.')}`}
@@ -912,16 +913,17 @@ const HelpBlock = () => {
             </span>
           </a>
         )}
+
         {email && (
           <a
             href={`mailto:${email}`}
             className="flex items-start gap-3 text-sm text-bamboo-600 hover:text-bamboo-800"
           >
             <FiMail size={18} className="mt-0.5 shrink-0 text-bamboo-500" />
-            <span>
+            <span className="min-w-0">
               Write to us at
               <br />
-              <span className="break-all font-medium text-bamboo-800">{email}</span>
+              <span className="break-words font-medium text-bamboo-800">{email}</span>
             </span>
           </a>
         )}
