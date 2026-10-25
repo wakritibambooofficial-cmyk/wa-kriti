@@ -209,9 +209,9 @@ const SOCIAL_PLATFORMS = [
   { key: 'instagram', label: 'Instagram' },
   { key: 'facebook', label: 'Facebook' },
   { key: 'youtube', label: 'YouTube' },
-  { key: 'twitter', label: 'X / Twitter' },
-  { key: 'linkedin', label: 'LinkedIn' },
-  { key: 'pinterest', label: 'Pinterest' },
+  // { key: 'twitter', label: 'X / Twitter' },
+  // { key: 'linkedin', label: 'LinkedIn' },
+  // { key: 'pinterest', label: 'Pinterest' },
 ];
 
 const esc = (value = '') =>
