@@ -525,7 +525,7 @@ const NAV_LINKS = [
   { label: 'Bulk-Order', to: '/festive-gifting#bulk-order-enquiry' },
   { label: 'Knowledge Center', to: '/knowledge-center' },
   { label: 'Blogs', to: '/blog' },
-  { label: 'About', to: '/about' },
+  { label: 'About-Us', to: '/about' },
   { label: 'Contact-Us', to: '/contact' },
  // { label: 'Founder', to: '/founder' },
 ];
