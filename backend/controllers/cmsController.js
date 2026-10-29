@@ -158,6 +158,7 @@ const STATIC_PAGE_SLUGS = [
   'cancellation-policy',
   'terms-and-conditions',
   'accessibility-statement',
+  'F&Q'
 ];
 
 const emptyPageSkeleton = (slug) => ({
