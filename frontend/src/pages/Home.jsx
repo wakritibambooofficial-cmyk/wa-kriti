@@ -838,8 +838,6 @@
 
 // export default Home;
 
-
-
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -978,7 +976,7 @@ const CtaButton = ({ to, className, children }) => (
   </Link>
 );
 
-/* ── Live slide content: only types while its slide is the active one ── */
+/* ── Live slide content: compact text strip on mobile, centered hero on desktop ── */
 const SlideContent = ({ banner }) => {
   const swiperSlide = useSwiperSlide();
   const isActive = swiperSlide?.isActive ?? true;
@@ -986,24 +984,26 @@ const SlideContent = ({ banner }) => {
 
   return (
     <div className="relative mx-auto w-full max-w-lg text-white">
-      <Eyebrow text={banner.subtitle} />
+      <div className="hidden sm:block">
+        <Eyebrow text={banner.subtitle} />
+      </div>
 
       <AnimatedHeadline
         key={banner._id}
         text={banner.title}
-        className="mt-3 font-display text-[1.85rem] font-bold leading-[1.15] tracking-tight drop-shadow-[0_4px_16px_rgba(0,0,0,0.4)] sm:mt-4 sm:text-5xl sm:leading-tight"
+        className="line-clamp-2 font-display text-lg font-bold leading-tight tracking-tight drop-shadow-[0_2px_8px_rgba(0,0,0,0.5)] sm:mt-4 sm:text-5xl sm:leading-tight sm:drop-shadow-[0_4px_16px_rgba(0,0,0,0.4)]"
       />
 
-      <p className="mx-auto mt-2.5 min-h-[3rem] max-w-md text-sm leading-relaxed text-sand-100/90 drop-shadow-sm sm:mt-3 sm:min-h-[3.5rem] sm:text-base">
+      <p className="hidden min-h-[3.5rem] text-sand-100/90 leading-relaxed drop-shadow-sm sm:mt-3 sm:block sm:text-base">
         {typed}
         <span className="wk-cursor ml-0.5 inline-block w-[2px] translate-y-[2px] bg-white/90" style={{ height: '1em' }} />
       </p>
 
-      <div className="mt-5 flex flex-wrap justify-center gap-2.5 sm:mt-7 sm:gap-3">
+      <div className="mt-2.5 flex gap-2 sm:mt-7 sm:justify-center sm:gap-3">
         {banner.ctaPrimaryLabel && (
           <CtaButton
             to={banner.ctaPrimaryLink || '/shop'}
-            className="btn-primary px-5 py-2.5 text-xs hover:shadow-xl hover:shadow-bamboo-900/40 sm:px-6 sm:py-3 sm:text-sm"
+            className="btn-primary px-4 py-2 text-xs hover:shadow-xl hover:shadow-bamboo-900/40 sm:px-6 sm:py-3 sm:text-sm"
           >
             {banner.ctaPrimaryLabel}
           </CtaButton>
@@ -1011,7 +1011,7 @@ const SlideContent = ({ banner }) => {
         {banner.ctaSecondaryLabel && (
           <CtaButton
             to={banner.ctaSecondaryLink || '/shop'}
-            className="rounded-xl border border-white/40 px-5 py-2.5 text-xs font-semibold text-white hover:border-white/70 hover:bg-white/10 hover:shadow-lg hover:shadow-black/20 sm:px-6 sm:py-3 sm:text-sm"
+            className="hidden rounded-xl border border-white/40 px-6 py-3 text-sm font-semibold text-white hover:border-white/70 hover:bg-white/10 hover:shadow-lg hover:shadow-black/20 sm:inline-flex"
           >
             {banner.ctaSecondaryLabel}
           </CtaButton>
@@ -1024,7 +1024,9 @@ const SlideContent = ({ banner }) => {
 const FALLBACK_DESCRIPTION =
   'Discover handcrafted bamboo furniture, decor, and lifestyle products made by skilled artisans.';
 
-const HERO_HEIGHT = 'h-[72svh] min-h-[460px] sm:h-[85vh] sm:min-h-0';
+// Mobile: wide banner (Amazon/Flipkart style). Desktop: original full-height hero.
+const BANNER_BOX = 'relative w-full aspect-[16/10] sm:aspect-auto sm:h-[85vh]';
+const FALLBACK_BOX = 'relative flex w-full min-h-[420px] sm:h-[85vh] sm:min-h-0';
 
 const Hero = () => {
   const { data: banners = [], isLoading } = useQuery({
@@ -1036,12 +1038,12 @@ const Hero = () => {
   // Hooks must run unconditionally every render
   const typedFallback = useTypewriterLoop(!isLoading && banners.length === 0 ? FALLBACK_DESCRIPTION : '');
 
-  if (isLoading) return <div className={`${HERO_HEIGHT} animate-pulse bg-sand-200`} />;
+  if (isLoading) return <div className={`${BANNER_BOX} animate-pulse bg-sand-200`} />;
 
   if (!banners.length) {
     return (
       <div
-        className={`relative flex ${HERO_HEIGHT} flex-col items-center justify-center overflow-hidden bg-gradient-to-br from-bamboo-700 to-bamboo-800 px-6 py-10 text-center text-white`}
+        className={`${FALLBACK_BOX} flex-col items-center justify-center overflow-hidden bg-gradient-to-br from-bamboo-700 to-bamboo-800 px-6 py-10 text-center text-white`}
       >
         <GlobalHeroStyles />
 
@@ -1087,16 +1089,18 @@ const Hero = () => {
         autoplay={{ delay: 9000 }}
         pagination={{ clickable: true }}
         loop
-        className={`${HERO_HEIGHT}`}
+        className={BANNER_BOX}
       >
         {banners.map((banner) => (
           <SwiperSlide key={banner._id}>
-            <div className="relative flex h-full items-center justify-center overflow-hidden px-6 py-10 text-center sm:px-16 sm:py-0">
+            {/* Mobile: image fills the box, text sits in a dark strip at the bottom.
+                Desktop: centered text over the image, as before. */}
+            <div className="relative flex h-full w-full items-end overflow-hidden px-4 pb-10 text-left sm:items-center sm:justify-center sm:px-16 sm:pb-0 sm:text-center">
               <div
                 className="wk-kenburns absolute inset-0 bg-cover bg-center"
                 style={{ backgroundImage: `url(${banner.image.url})` }}
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/35 to-black/25" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/30 to-transparent sm:bg-gradient-to-t sm:from-black/60 sm:via-black/35 sm:to-black/25" />
               <SlideContent banner={banner} />
             </div>
           </SwiperSlide>
