@@ -942,12 +942,21 @@ const WhyTile = ({ icon: Icon, title, subtitle }) => (
   </div>
 );
 
+// const SpecRow = ({ label, value }) => {
+//   if (!value) return null;
+//   return (
+//     <div className="flex justify-between px-4 py-3 text-sm">
+//       <dt className="text-bamboo-500">{label}</dt>
+//       <dd className="font-medium text-bamboo-800">{value}</dd>
+//     </div>
+//   );
+// };
 const SpecRow = ({ label, value }) => {
   if (!value) return null;
   return (
-    <div className="flex justify-between px-4 py-3 text-sm">
-      <dt className="text-bamboo-500">{label}</dt>
-      <dd className="font-medium text-bamboo-800">{value}</dd>
+    <div className="flex items-start justify-between gap-4 px-4 py-3 text-sm">
+      <dt className="shrink-0 text-bamboo-500">{label}</dt>
+      <dd className="min-w-0 text-right font-medium text-bamboo-800">{value}</dd>
     </div>
   );
 };
