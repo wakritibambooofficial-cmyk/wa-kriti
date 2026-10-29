@@ -26,7 +26,7 @@ const FloatingButtons = () => {
 
   return (
     // bottom-24 lifts this stack above the Wa-Kriti Assistant pill (which sits at bottom-6)
-  <div className="fixed bottom-[7.5rem] sm:bottom-24 right-5 z-30 flex flex-col items-end gap-3">
+    <div className="fixed bottom-24 right-5 z-30 flex flex-col items-end gap-3">
       {/* Back to top: appears on scroll, always the top-most button */}
       {showBackToTop && (
         <button
