@@ -343,6 +343,7 @@ const Footer = () => {
           links={[
             { label: 'Blog', to: '/blog' },
             { label: 'Knowledge Center', to: '/knowledge-center' },
+            { label: 'F&Q', to: '/f&q' },
           ]}
         />
         <FooterColumn

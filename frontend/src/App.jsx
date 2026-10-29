@@ -143,6 +143,7 @@ function App() {
           <Route path="/cancellation-policy" element={<CmsPage slug="cancellation-policy" />} />
           <Route path="/terms-and-conditions" element={<CmsPage slug="terms-and-conditions" />} />
           <Route path="/accessibility-statement" element={<CmsPage slug="accessibility-statement" />} />
+          <Route path="/f&q" element={<CmsPage slug="F&Q" />} />
 
           <Route element={<GuestOnlyRoute />}>
             <Route path="/login" element={<Login />} />

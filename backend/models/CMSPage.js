@@ -15,6 +15,7 @@ const cmsPageSchema = new mongoose.Schema(
         'cancellation-policy',
         'terms-and-conditions',
         'accessibility-statement',
+        'F&Q'
       ],
     },
     title: { type: String, required: true },
