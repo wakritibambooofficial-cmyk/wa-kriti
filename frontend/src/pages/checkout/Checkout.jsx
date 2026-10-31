@@ -18,9 +18,11 @@
 //   FiChevronDown,
 //   FiTag,
 // } from 'react-icons/fi';
+// import { FaWhatsapp } from 'react-icons/fa';
 // import { useSelector } from 'react-redux';
 
 // import { addressApi, orderApi } from '../../services/commerceApi';
+// import { cmsApi } from '../../services/cmsApi';
 // import { useCart } from '../../hooks/useCart';
 // import { loadRazorpayScript } from '../../utils/loadRazorpay';
 // import Button from '../../components/ui/Button';
@@ -59,6 +61,14 @@
 //   return `${formatDate(from)} – ${formatDate(to)}`;
 // };
 
+// // Builds a wa.me link from any phone format (digits only, defaults to +91 for 10-digit numbers)
+// const buildWhatsAppLink = (rawNumber, message) => {
+//   let digits = String(rawNumber || '').replace(/\D/g, '');
+//   if (!digits) return null;
+//   if (digits.length === 10) digits = `91${digits}`;
+//   return `https://wa.me/${digits}?text=${encodeURIComponent(message)}`;
+// };
+
 // const PriceRow = ({ label, value, highlight, muted }) => (
 //   <div className="flex items-center justify-between text-sm">
 //     <span className={muted ? 'text-bamboo-400' : 'text-bamboo-600'}>{label}</span>
@@ -83,6 +93,13 @@
 //     queryKey: ['addresses'],
 //     queryFn: () => addressApi.getAddresses(),
 //     select: (res) => res.data.data.addresses,
+//   });
+
+//   // Website settings (same query key as the Contact page, so the cache is shared)
+//   const { data: settings } = useQuery({
+//     queryKey: ['website-settings'],
+//     queryFn: () => cmsApi.getSettings(),
+//     select: (res) => res.data.data.settings,
 //   });
 
 //   // Preselect default address so the customer can continue with one tap
@@ -110,6 +127,14 @@
 //   const totalSavings = discount + (shippingCost === 0 ? FLAT_SHIPPING_COST : 0);
 //   const itemCount = items.reduce((sum, i) => sum + i.quantity, 0);
 //   const deliveryWindow = getDeliveryWindow();
+
+//   // Prefer a dedicated WhatsApp number from settings, fall back to the contact phone
+//   const whatsappNumber = settings?.whatsappNumber || settings?.contactPhone;
+//   const whatsappLink = buildWhatsAppLink(
+//     settings?.whatsappNumber || settings?.contactPhone,
+//     'Hi Wa-Kriti, I have a query regarding my order/product.'
+//   );
+  
 
 //   if (items.length === 0) return <Navigate to="/cart" replace />;
 
@@ -487,6 +512,29 @@
 //                     </p>
 //                   </div>
 
+//                   {/* Help / WhatsApp (number comes from website settings) */}
+//                  {whatsappLink && (
+//   <div className="flex flex-wrap items-center gap-3">
+//     <p className="text-base text-bamboo-600">
+//       For any query related to product or Bulk-order, please connect
+//     </p>
+//     <a
+//       href={whatsappLink}
+//       target="_blank"
+//       rel="noopener noreferrer"
+//       aria-label="Chat with us on WhatsApp"
+//       className="flex items-center gap-2"
+//     >
+//       <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#25D366] text-white shadow-md transition-transform hover:scale-105">
+//         <FaWhatsapp size={24} />
+//       </span>
+//       <span className="text-base font-semibold tabular-nums text-bamboo-800">
+//         {whatsappNumber}
+//       </span>
+//     </a>
+//   </div>
+// )}
+
 //                   <div className="hidden gap-3 lg:flex">
 //                     <Button variant="secondary" onClick={() => goToStep(0)}>
 //                       Back
@@ -641,12 +689,19 @@
 
 
 
+
+
+
+
+
+
 import { useEffect, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Helmet } from 'react-helmet-async';
 import toast from 'react-hot-toast';
 import { AnimatePresence, motion } from 'framer-motion';
+import { QRCodeSVG } from 'qrcode.react';
 import {
   FiCheck,
   FiPlus,
@@ -658,6 +713,8 @@ import {
   FiEdit2,
   FiChevronDown,
   FiTag,
+  FiX,
+  FiSmartphone,
 } from 'react-icons/fi';
 import { FaWhatsapp } from 'react-icons/fa';
 import { useSelector } from 'react-redux';
@@ -665,15 +722,18 @@ import { useSelector } from 'react-redux';
 import { addressApi, orderApi } from '../../services/commerceApi';
 import { cmsApi } from '../../services/cmsApi';
 import { useCart } from '../../hooks/useCart';
-import { loadRazorpayScript } from '../../utils/loadRazorpay';
 import Button from '../../components/ui/Button';
 import AddressForm from '../../components/checkout/AddressForm';
 
 /* ---------- Config (adjust to your real policies) ---------- */
 const FREE_SHIPPING_THRESHOLD = 999;
 const FLAT_SHIPPING_COST = 79;
-const DELIVERY_DAYS = { min: 4, max: 7 }; // estimated delivery window in days
-const PAYMENT_METHOD = 'razorpay';
+const DELIVERY_DAYS = { min: 4, max: 7 };
+const PAYMENT_METHOD = 'upi_qr';
+
+// TEMPORARY: replace with the client's real UPI ID (VPA)
+const UPI_ID = 'yourshop@upi';
+const PAYEE_NAME = 'Wa-Kriti';
 
 const STEPS = [
   { key: 'address', label: 'Delivery', icon: FiMapPin },
@@ -702,12 +762,25 @@ const getDeliveryWindow = () => {
   return `${formatDate(from)} – ${formatDate(to)}`;
 };
 
-// Builds a wa.me link from any phone format (digits only, defaults to +91 for 10-digit numbers)
+// Builds a wa.me link from any phone format (defaults to +91 for 10-digit numbers)
 const buildWhatsAppLink = (rawNumber, message) => {
   let digits = String(rawNumber || '').replace(/\D/g, '');
   if (!digits) return null;
   if (digits.length === 10) digits = `91${digits}`;
   return `https://wa.me/${digits}?text=${encodeURIComponent(message)}`;
+};
+
+// Dynamic UPI payment link: amount + order reference are baked into the QR
+const buildUpiLink = ({ amount, orderNumber }) => {
+  const params = new URLSearchParams({
+    pa: UPI_ID,
+    pn: PAYEE_NAME,
+    am: Number(amount).toFixed(2),
+    cu: 'INR',
+    tn: `Order ${orderNumber}`,
+    tr: String(orderNumber),
+  });
+  return `upi://pay?${params.toString()}`;
 };
 
 const PriceRow = ({ label, value, highlight, muted }) => (
@@ -730,26 +803,36 @@ const Checkout = () => {
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   const [showSummary, setShowSummary] = useState(false);
 
+  // UPI QR payment modal state
+  const [placedOrder, setPlacedOrder] = useState(null); // order created on the server
+  const [showPayModal, setShowPayModal] = useState(false);
+
   const { data: addresses = [], isLoading: addressesLoading } = useQuery({
     queryKey: ['addresses'],
     queryFn: () => addressApi.getAddresses(),
     select: (res) => res.data.data.addresses,
   });
 
-  // Website settings (same query key as the Contact page, so the cache is shared)
   const { data: settings } = useQuery({
     queryKey: ['website-settings'],
     queryFn: () => cmsApi.getSettings(),
     select: (res) => res.data.data.settings,
   });
 
-  // Preselect default address so the customer can continue with one tap
   useEffect(() => {
     if (!selectedAddressId && addresses.length) {
       const def = addresses.find((a) => a.isDefault) || addresses[0];
       setSelectedAddressId(def._id);
     }
   }, [addresses, selectedAddressId]);
+
+  // Lock page scroll while the modal is open
+  useEffect(() => {
+    document.body.style.overflow = showPayModal ? 'hidden' : '';
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [showPayModal]);
 
   const goToStep = (n) => {
     setStep(n);
@@ -769,15 +852,47 @@ const Checkout = () => {
   const itemCount = items.reduce((sum, i) => sum + i.quantity, 0);
   const deliveryWindow = getDeliveryWindow();
 
-  // Prefer a dedicated WhatsApp number from settings, fall back to the contact phone
   const whatsappNumber = settings?.whatsappNumber || settings?.contactPhone;
-  const whatsappLink = buildWhatsAppLink(
-    settings?.whatsappNumber || settings?.contactPhone,
-    'Hi Wa-Kriti, I have a query regarding my order/product.'
-  );
-  
 
-  if (items.length === 0) return <Navigate to="/cart" replace />;
+  // Amount that goes into the QR: prefer the server's figure, fall back to the client total
+  const payableAmount = placedOrder?.totalAmount ?? grandTotal;
+
+  // Pre-filled WhatsApp message with all order details
+  const buildOrderMessage = () => {
+    const addr = selectedAddress;
+    const lines = [
+      'Hi Wa-Kriti, I have made the payment. Please confirm my order.',
+      '',
+      `*Order No:* ${placedOrder?.orderNumber || '-'}`,
+      `*Customer:* ${user?.fullName || addr?.fullName || ''}`,
+      '',
+      '*Items:*',
+      ...items.map(
+        (item, i) =>
+          `${i + 1}. ${item.name} × ${item.quantity} = ${formatINR(item.price * item.quantity)}\n   Image: ${item.image}`
+      ),
+      '',
+      `Subtotal: ${formatINR(subtotal)}`,
+      ...(discount > 0 ? [`Discount${coupon?.code ? ` (${coupon.code})` : ''}: -${formatINR(discount)}`] : []),
+      `Delivery: ${shippingCost === 0 ? 'FREE' : formatINR(shippingCost)}`,
+      `*Total Paid: ${formatINR(payableAmount)}*`,
+      '',
+      '*Delivery Address:*',
+      addr?.fullName,
+      `${addr?.addressLine1}${addr?.addressLine2 ? `, ${addr.addressLine2}` : ''}`,
+      `${addr?.city}, ${addr?.state} - ${addr?.pincode}`,
+      `Phone: ${addr?.phone}`,
+      ...(notes ? ['', `*Delivery notes:* ${notes}`] : []),
+      '',
+      '📎 Payment screenshot attached below.',
+    ];
+    return lines.filter((l) => l !== undefined).join('\n');
+  };
+
+  const confirmationLink = buildWhatsAppLink(whatsappNumber, buildOrderMessage());
+  const helpLink = buildWhatsAppLink(whatsappNumber, 'Hi Wa-Kriti, I have a query regarding my order/product.');
+
+  if (items.length === 0 && !placedOrder) return <Navigate to="/cart" replace />;
 
   /* ---------- Actions ---------- */
   const handleAddAddress = async (values) => {
@@ -800,6 +915,12 @@ const Checkout = () => {
       return;
     }
 
+    // Order already created (user closed the modal earlier) – just reopen it, avoid duplicates
+    if (placedOrder) {
+      setShowPayModal(true);
+      return;
+    }
+
     setIsPlacingOrder(true);
     try {
       const { data } = await orderApi.checkout({
@@ -807,94 +928,34 @@ const Checkout = () => {
         paymentMethod: PAYMENT_METHOD,
         notes,
       });
-
-      const scriptLoaded = await loadRazorpayScript();
-      if (!scriptLoaded) {
-        toast.error('Could not load the payment window. Please check your connection and try again.');
-        setIsPlacingOrder(false);
-        return;
-      }
-
-      const { razorpay: rzp, order } = data.data;
-      let completed = false;
-
-      const razorpayCheckout = new window.Razorpay({
-        key: rzp.keyId,
-        amount: rzp.amount,
-        currency: rzp.currency,
-        order_id: rzp.orderId,
-        name: 'Wa-Kriti',
-        description: `Order ${order.orderNumber}`,
-        theme: { color: '#3F5B3E' },
-        prefill: {
-          name: user?.fullName,
-          email: user?.email,
-          contact: user?.phone || '',
-        },
-        handler: async (response) => {
-          completed = true;
-          try {
-            await orderApi.verifyPayment({
-              razorpay_order_id: response.razorpay_order_id,
-              razorpay_payment_id: response.razorpay_payment_id,
-              razorpay_signature: response.razorpay_signature,
-            });
-            queryClient.invalidateQueries({ queryKey: ['cart'] });
-            toast.success('Payment successful! Your order is confirmed.');
-            navigate('/order-success', {
-              state: {
-                orderNumber: order.orderNumber,
-                orderId: order._id,
-                shippingAddress: selectedAddress,
-              },
-            });
-          } catch (error) {
-            navigate('/order-failed', { state: { message: error?.response?.data?.message } });
-          }
-        },
-        modal: {
-          ondismiss: async () => {
-            if (completed) return;
-            try {
-              await orderApi.paymentFailed({
-                razorpay_order_id: rzp.orderId,
-                error: { description: 'Payment cancelled by user' },
-              });
-            } catch (_) {
-              /* ignore – customer just closed the window */
-            }
-            setIsPlacingOrder(false);
-            toast('Payment cancelled. Your items are still in your cart.', { icon: '⚠️' });
-          },
-        },
-      });
-
-      razorpayCheckout.on('payment.failed', async (response) => {
-        completed = true;
-        try {
-          await orderApi.paymentFailed({
-            razorpay_order_id: rzp.orderId,
-            error: response.error,
-          });
-        } catch (_) {
-          /* ignore */
-        }
-        navigate('/order-failed', { state: { message: response.error?.description } });
-      });
-
-      razorpayCheckout.open();
-      // Button stays in loading state while the payment window is open (prevents duplicate orders)
+      setPlacedOrder(data.data.order);
+      setShowPayModal(true);
     } catch (error) {
       toast.error(error?.response?.data?.message || 'Could not place your order. Please try again.');
+    } finally {
       setIsPlacingOrder(false);
     }
   };
 
-  /* ---------- Primary action (used by desktop card + mobile sticky bar) ---------- */
+  const handleFinish = () => {
+    queryClient.invalidateQueries({ queryKey: ['cart'] });
+    setShowPayModal(false);
+    navigate('/order-success', {
+      state: {
+        orderNumber: placedOrder.orderNumber,
+        orderId: placedOrder._id,
+        shippingAddress: selectedAddress,
+        paymentPending: true,
+      },
+    });
+  };
+
   const primaryAction =
     step === 0
       ? { label: 'Deliver to this address', onClick: () => goToStep(1), disabled: !selectedAddressId || showAddressForm }
       : { label: `Pay ${formatINR(grandTotal)} securely`, onClick: handlePlaceOrder, disabled: false };
+
+  const upiLink = placedOrder ? buildUpiLink({ amount: payableAmount, orderNumber: placedOrder.orderNumber }) : '';
 
   /* ---------- UI ---------- */
   return (
@@ -1097,13 +1158,15 @@ const Checkout = () => {
                           {notes && <p className="mt-2 text-sm italic text-bamboo-500">“{notes}”</p>}
                         </div>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => goToStep(0)}
-                        className="flex shrink-0 items-center gap-1 text-sm font-medium text-bamboo-600 hover:text-bamboo-800"
-                      >
-                        <FiEdit2 size={13} /> Change
-                      </button>
+                      {!placedOrder && (
+                        <button
+                          type="button"
+                          onClick={() => goToStep(0)}
+                          className="flex shrink-0 items-center gap-1 text-sm font-medium text-bamboo-600 hover:text-bamboo-800"
+                        >
+                          <FiEdit2 size={13} /> Change
+                        </button>
+                      )}
                     </div>
 
                     <div className="mt-4 flex items-center gap-3 rounded-xl bg-green-50 px-4 py-3 text-sm text-green-800">
@@ -1139,45 +1202,45 @@ const Checkout = () => {
                   <div className="rounded-2xl border border-bamboo-200/70 bg-white p-5 sm:p-6">
                     <h2 className="font-display text-lg font-semibold text-bamboo-900">Payment</h2>
                     <div className="mt-4 flex items-start gap-3 rounded-xl border-2 border-bamboo-600 bg-bamboo-50 p-4">
-                      <FiCreditCard className="mt-0.5 shrink-0 text-bamboo-600" size={20} />
+                      <FiSmartphone className="mt-0.5 shrink-0 text-bamboo-600" size={20} />
                       <div>
-                        <p className="font-semibold text-bamboo-900">Pay online</p>
-                        <p className="mt-0.5 text-sm text-bamboo-600">UPI, Debit/Credit cards, Netbanking & Wallets</p>
+                        <p className="font-semibold text-bamboo-900">Pay via UPI QR</p>
+                        <p className="mt-0.5 text-sm text-bamboo-600">
+                          Scan the QR with GPay, PhonePe, Paytm or any UPI app.
+                        </p>
                         <p className="mt-2 flex items-center gap-1.5 text-xs text-bamboo-500">
-                          <FiShield size={12} /> Secured by Razorpay. We never store your card details.
+                          <FiShield size={12} /> The amount is fixed in the QR and can’t be changed.
                         </p>
                       </div>
                     </div>
                     <p className="mt-3 text-xs text-bamboo-400">
-                      You’ll choose your payment method in the next window. Your order is confirmed only after payment succeeds.
+                      After paying, you’ll share the payment screenshot with us on WhatsApp. Your order is confirmed once we verify the payment.
                     </p>
                   </div>
 
-                  {/* Help / WhatsApp (number comes from website settings) */}
-                 {whatsappLink && (
-  <div className="flex flex-wrap items-center gap-3">
-    <p className="text-base text-bamboo-600">
-      For any query related to product or Bulk-order, please connect
-    </p>
-    <a
-      href={whatsappLink}
-      target="_blank"
-      rel="noopener noreferrer"
-      aria-label="Chat with us on WhatsApp"
-      className="flex items-center gap-2"
-    >
-      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#25D366] text-white shadow-md transition-transform hover:scale-105">
-        <FaWhatsapp size={24} />
-      </span>
-      <span className="text-base font-semibold tabular-nums text-bamboo-800">
-        {whatsappNumber}
-      </span>
-    </a>
-  </div>
-)}
+                  {/* Help / WhatsApp */}
+                  {helpLink && (
+                    <div className="flex flex-wrap items-center gap-3">
+                      <p className="text-base text-bamboo-600">
+                        For any query related to product or Bulk-order, please connect
+                      </p>
+                      <a
+                        href={helpLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label="Chat with us on WhatsApp"
+                        className="flex items-center gap-2"
+                      >
+                        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#25D366] text-white shadow-md transition-transform hover:scale-105">
+                          <FaWhatsapp size={24} />
+                        </span>
+                        <span className="text-base font-semibold tabular-nums text-bamboo-800">{whatsappNumber}</span>
+                      </a>
+                    </div>
+                  )}
 
                   <div className="hidden gap-3 lg:flex">
-                    <Button variant="secondary" onClick={() => goToStep(0)}>
+                    <Button variant="secondary" onClick={() => goToStep(0)} disabled={!!placedOrder}>
                       Back
                     </Button>
                     <Button className="flex-1" onClick={primaryAction.onClick} isLoading={isPlacingOrder}>
@@ -1194,7 +1257,6 @@ const Checkout = () => {
           {/* ================= SUMMARY ================= */}
           <aside className="order-first lg:order-2">
             <div className="lg:sticky lg:top-6">
-              {/* Mobile toggle */}
               <button
                 type="button"
                 onClick={() => setShowSummary((s) => !s)}
@@ -1247,7 +1309,6 @@ const Checkout = () => {
                   />
                 </div>
 
-                {/* Free shipping nudge */}
                 {amountToFreeShipping > 0 ? (
                   <div className="mt-4 rounded-xl bg-amber-50 p-3">
                     <p className="text-xs font-medium text-amber-800">
@@ -1290,7 +1351,7 @@ const Checkout = () => {
 
                 <div className="mt-4 flex items-center gap-2 border-t border-bamboo-100 pt-4 text-xs text-bamboo-500">
                   <FiShield className="shrink-0 text-green-600" size={16} />
-                  Payments are encrypted and processed securely by Razorpay.
+                  Pay securely with any UPI app. We never see your bank details.
                 </div>
               </div>
             </div>
@@ -1315,6 +1376,97 @@ const Checkout = () => {
           </Button>
         </div>
       </div>
+
+      {/* ================= UPI QR PAYMENT MODAL ================= */}
+      <AnimatePresence>
+        {showPayModal && placedOrder && (
+          <motion.div
+            className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div
+              role="dialog"
+              aria-modal="true"
+              aria-label="Pay with UPI QR"
+              initial={{ opacity: 0, y: 40 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 40 }}
+              transition={{ duration: 0.3, ease: EASE }}
+              className="relative max-h-[92vh] w-full max-w-md overflow-y-auto rounded-t-3xl bg-white p-6 sm:rounded-3xl"
+            >
+              <button
+                type="button"
+                onClick={() => setShowPayModal(false)}
+                aria-label="Close"
+                className="absolute right-4 top-4 rounded-full p-1.5 text-bamboo-500 hover:bg-bamboo-50"
+              >
+                <FiX size={20} />
+              </button>
+
+              <h2 className="font-display text-xl font-bold text-bamboo-900">Scan & pay</h2>
+              <p className="mt-0.5 text-sm text-bamboo-500">Order {placedOrder.orderNumber}</p>
+
+              {/* Amount card */}
+              <div className="mt-4 rounded-2xl bg-bamboo-50 p-4 text-center">
+                <p className="text-xs font-medium uppercase tracking-wide text-bamboo-500">Amount to pay</p>
+                <p className="font-display text-3xl font-bold tabular-nums text-bamboo-900">
+                  {formatINR(payableAmount)}
+                </p>
+              </div>
+
+              {/* Dynamic QR */}
+              <div className="mx-auto mt-4 w-fit rounded-2xl border border-bamboo-200 bg-white p-4">
+                <QRCodeSVG value={upiLink} size={208} level="M" includeMargin={false} />
+              </div>
+              <p className="mt-2 text-center text-xs text-bamboo-500">
+                This QR is generated for {formatINR(payableAmount)} only.
+              </p>
+
+              {/* Mobile: open UPI app directly */}
+              <a
+                href={upiLink}
+                className="mt-4 flex items-center justify-center gap-2 rounded-xl border-2 border-bamboo-600 py-2.5 text-sm font-semibold text-bamboo-700 lg:hidden"
+              >
+                <FiSmartphone size={16} /> Open UPI app to pay
+              </a>
+
+              {/* Step 2: WhatsApp */}
+              <div className="mt-5 rounded-2xl border border-bamboo-200/70 p-4">
+                <p className="text-sm font-semibold text-bamboo-900">After paying</p>
+                <ol className="mt-1.5 list-decimal space-y-1 pl-5 text-sm text-bamboo-600">
+                  <li>Take a screenshot of the successful payment.</li>
+                  <li>Tap the button below — your order details are pre-filled.</li>
+                  <li>Attach the screenshot in WhatsApp and press send.</li>
+                </ol>
+
+                {confirmationLink ? (
+                  <a
+                    href={confirmationLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-4 flex items-center justify-center gap-2 rounded-xl bg-[#25D366] py-3 text-sm font-semibold text-white shadow-md transition-transform hover:scale-[1.01]"
+                  >
+                    <FaWhatsapp size={20} /> Send screenshot on WhatsApp
+                  </a>
+                ) : (
+                  <p className="mt-4 rounded-xl bg-amber-50 p-3 text-xs text-amber-800">
+                    WhatsApp number isn’t configured yet. Please contact support with your order number.
+                  </p>
+                )}
+              </div>
+
+              <Button className="mt-4" fullWidth onClick={handleFinish}>
+                I’ve sent the screenshot
+              </Button>
+              <p className="mt-2 text-center text-[11px] text-bamboo-400">
+                Your order is confirmed after we verify your payment.
+              </p>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <style>{`
         @keyframes shimmer {
