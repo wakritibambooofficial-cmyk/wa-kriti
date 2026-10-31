@@ -1,6 +1,5 @@
 
 
-
 // import { useState, useMemo, useEffect } from 'react';
 // import { useQuery, useQueryClient } from '@tanstack/react-query';
 // import { Helmet } from 'react-helmet-async';
@@ -52,6 +51,15 @@
 
 // const PAGE_SIZE = 20;
 
+// // ---------- branding / support ----------
+// const LOGO_PATH = '/stamp.jpeg'; // file inside /public — change if your file name differs
+// const SUPPORT_PHONE = '9366431377';
+// const SUPPORT_WA_LINK = 'https://wa.me/919366431377?text=Hi%2C%20I%20need%20help%20with%20an%20order.';
+// const SUPPORT_EMAIL = 'wakriti.bambooofficial@gmail.com';
+
+// // The print window is a blank page, so the logo needs an absolute URL
+// const logoUrl = () => `${window.location.origin}${LOGO_PATH}`;
+
 // // ---------- helpers ----------
 // const isSameDay = (a, b) =>
 //   a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
@@ -69,10 +77,21 @@
 //   win.document.write(html);
 //   win.document.close();
 //   win.focus();
-//   setTimeout(() => win.print(), 400);
+
+//   // wait for the logo(s) to load before opening the print dialog
+//   const imgs = Array.from(win.document.images);
+//   Promise.all(
+//     imgs.map((img) =>
+//       img.complete
+//         ? Promise.resolve()
+//         : new Promise((res) => { img.onload = res; img.onerror = res; })
+//     )
+//   ).then(() => setTimeout(() => win.print(), 200));
 // };
 
 // const buildInvoiceHTML = (orders) => {
+//   const logo = logoUrl();
+
 //   const pages = orders.map((order, idx) => {
 //     const items = order.items || [];
 //     const subtotal = items.reduce((s, it) => s + (it.price || 0) * (it.quantity || 1), 0);
@@ -80,9 +99,12 @@
 //     return `
 //       <div class="page" style="${idx < orders.length - 1 ? 'page-break-after: always;' : ''}">
 //         <div class="header">
-//           <div>
-//             <h1>WA-KRITI</h1>
-//             <p class="muted">Handmade &amp; Eco-friendly Goods</p>
+//           <div style="display:flex; align-items:center; gap:12px;">
+//             <img src="${logo}" alt="Wa-Kriti" class="logo" />
+//             <div>
+//               <h1>WA-KRITI</h1>
+//               <p class="muted">Handmade &amp; Eco-friendly Goods</p>
+//             </div>
 //           </div>
 //           <div class="text-right">
 //             <h2>Tax Invoice</h2>
@@ -124,11 +146,20 @@
 //           </tbody>
 //         </table>
 
-//         <div class="totals">
-//           <div class="row"><span>Subtotal</span><span>${formatMoney(subtotal)}</span></div>
-//           <div class="row"><span>Shipping</span><span>${formatMoney(order.shippingCost || 0)}</span></div>
-//           <div class="row"><span>Tax</span><span>${formatMoney(order.tax || 0)}</span></div>
-//           <div class="row total"><span>Grand Total</span><span>${formatMoney(order.grandTotal)}</span></div>
+//         <div class="totals-wrap">
+//           <img src="${logo}" alt="" class="watermark" />
+//           <div class="totals">
+//             <div class="row"><span>Subtotal</span><span>${formatMoney(subtotal)}</span></div>
+//             <div class="row"><span>Shipping</span><span>${formatMoney(order.shippingCost || 0)}</span></div>
+//             <div class="row"><span>Tax</span><span>${formatMoney(order.tax || 0)}</span></div>
+//             <div class="row total"><span>Grand Total</span><span>${formatMoney(order.grandTotal)}</span></div>
+//           </div>
+//         </div>
+
+//         <div class="support">
+//           <p class="label">Need help?</p>
+//           <p class="muted">WhatsApp us at <a href="${SUPPORT_WA_LINK}">${SUPPORT_PHONE}</a></p>
+//           <p class="muted">Write to us at <a href="mailto:${SUPPORT_EMAIL}">${SUPPORT_EMAIL}</a></p>
 //         </div>
 
 //         <p class="footer">Thank you for shopping with Wa-Kriti — handcrafted with care.</p>
@@ -141,11 +172,12 @@
 //         <title>Invoice</title>
 //         <style>
 //           * { box-sizing: border-box; font-family: Georgia, 'Times New Roman', serif; }
-//           body { margin: 0; padding: 0; color: #2d3327; }
+//           body { margin: 0; padding: 0; color: #2d3327; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 //           .page { padding: 40px; }
-//           .header { display: flex; justify-content: space-between; border-bottom: 2px solid #2d3327; padding-bottom: 16px; margin-bottom: 20px; }
+//           .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #2d3327; padding-bottom: 16px; margin-bottom: 20px; }
 //           h1 { margin: 0; font-size: 24px; letter-spacing: 1px; }
 //           h2 { margin: 0; font-size: 18px; }
+//           .logo { width: 64px; height: 64px; object-fit: contain; }
 //           .text-right { text-align: right; }
 //           .muted { color: #6b7263; font-size: 13px; margin: 2px 0; }
 //           .grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 24px; }
@@ -154,9 +186,13 @@
 //           table.items { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
 //           table.items th { text-align: left; font-size: 12px; text-transform: uppercase; color: #8a917f; border-bottom: 1px solid #ddd; padding: 8px; }
 //           table.items td { padding: 8px; border-bottom: 1px solid #eee; font-size: 14px; }
-//           .totals { width: 260px; margin-left: auto; }
+//           .totals-wrap { position: relative; margin-top: 8px; }
+//           .watermark { position: absolute; top: 50%; left: 50%; width: 190px; height: 190px; object-fit: contain; transform: translate(-50%, -50%); opacity: 0.2; z-index: 0; pointer-events: none; }
+//           .totals { position: relative; z-index: 1; width: 260px; margin-left: auto; }
 //           .totals .row { display: flex; justify-content: space-between; padding: 4px 0; font-size: 14px; }
 //           .totals .total { border-top: 2px solid #2d3327; margin-top: 6px; padding-top: 8px; font-weight: bold; font-size: 16px; }
+//           .support { text-align: right; margin-top: 32px; padding-top: 16px; border-top: 1px dashed #bbb; }
+//           .support a { color: #2d3327; text-decoration: none; font-weight: bold; }
 //           .footer { text-align: center; margin-top: 30px; font-size: 12px; color: #8a917f; }
 //           @media print { .page { padding: 20px; } }
 //         </style>
@@ -166,13 +202,15 @@
 // };
 
 // const buildLabelHTML = (orders) => {
+//   const logo = logoUrl();
+
 //   const pages = orders.map((order, idx) => {
 //     const addr = order.shippingAddress || {};
 //     const items = order.items || [];
 //     return `
 //       <div class="label ${idx < orders.length - 1 ? 'break' : ''}">
 //         <div class="row-top">
-//           <span class="brand">WA-KRITI</span>
+//           <span class="brand"><img src="${logo}" class="logo-sm" alt="" /> WA-KRITI</span>
 //           <span class="cod ${order.paymentStatus === 'paid' ? 'prepaid' : ''}">${order.paymentStatus === 'paid' ? 'PREPAID' : 'COD'}</span>
 //         </div>
 //         <div class="block">
@@ -193,6 +231,14 @@
 //           <span>${items.length} item(s)</span>
 //           <span>${formatMoney(order.grandTotal)}</span>
 //         </div>
+//         <div class="auth-footer">
+//           <img src="${logo}" class="stamp-sm" alt="Authentic" />
+//           <div>
+//             <p class="muted"><strong>Authentic Wa-Kriti Product</strong></p>
+//             <p class="muted">Need help? WhatsApp: ${SUPPORT_PHONE}</p>
+//             <p class="muted">${SUPPORT_EMAIL}</p>
+//           </div>
+//         </div>
 //       </div>`;
 //   }).join('');
 
@@ -202,11 +248,12 @@
 //         <title>Shipping Label</title>
 //         <style>
 //           * { box-sizing: border-box; font-family: Arial, sans-serif; }
-//           body { margin: 0; padding: 20px; }
+//           body { margin: 0; padding: 20px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 //           .label { width: 380px; border: 2px solid #000; padding: 16px; margin: 0 auto 20px; }
 //           .label.break { page-break-after: always; }
 //           .row-top { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed #000; padding-bottom: 8px; margin-bottom: 10px; }
-//           .brand { font-weight: bold; font-size: 16px; letter-spacing: 1px; }
+//           .brand { display: flex; align-items: center; gap: 8px; font-weight: bold; font-size: 16px; letter-spacing: 1px; }
+//           .logo-sm { width: 36px; height: 36px; object-fit: contain; }
 //           .cod { font-size: 12px; font-weight: bold; padding: 3px 8px; border: 1px solid #000; }
 //           .cod.prepaid { background: #000; color: #fff; }
 //           .block { margin-bottom: 10px; }
@@ -214,6 +261,8 @@
 //           .muted { color: #555; font-size: 12px; margin: 0; }
 //           .barcode { text-align: center; font-family: 'Libre Barcode 39', monospace; font-size: 36px; letter-spacing: 2px; margin: 10px 0; }
 //           .row-bottom { display: flex; justify-content: space-between; border-top: 1px dashed #000; padding-top: 8px; font-size: 12px; font-weight: bold; }
+//           .auth-footer { display: flex; align-items: center; gap: 10px; border-top: 1px dashed #000; margin-top: 10px; padding-top: 8px; }
+//           .stamp-sm { width: 48px; height: 48px; object-fit: contain; }
 //         </style>
 //       </head>
 //       <body>${pages}</body>
@@ -630,13 +679,14 @@
 
 // export default AdminOrders;
 
+
 import { useState, useMemo, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Helmet } from 'react-helmet-async';
 import toast from 'react-hot-toast';
 import {
   Search, Printer, FileText, X, Package,
-  IndianRupee, Clock, CheckCircle2, XCircle, RotateCcw, Truck,
+  IndianRupee, Clock, CheckCircle2, XCircle, RotateCcw, Truck, BadgeCheck,
 } from 'lucide-react';
 import { adminOrderApi } from '../../services/adminApi';
 import Button from '../../components/ui/Button';
@@ -698,6 +748,19 @@ const formatMoney = (n) => `₹${Number(n || 0).toLocaleString('en-IN')}`;
 const formatDateTime = (d) =>
   new Date(d).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
+// UPI QR order that is waiting for the admin to verify the money
+const isAwaitingUpi = (order) => order.paymentMethod === 'upi_qr' && order.paymentStatus === 'processing';
+
+const paymentLabel = (order) => {
+  if (isAwaitingUpi(order)) return 'UPI · Awaiting verification';
+  const method = order.paymentMethod === 'upi_qr' ? 'UPI' : order.paymentMethod;
+  return `${method || ''} · ${order.paymentStatus || ''}`;
+};
+
+// Street line: new orders save addressLine1/2 — keep line1/2 as a fallback for older data
+const streetLine = (addr) =>
+  `${addr.addressLine1 || addr.line1 || ''} ${addr.addressLine2 || addr.line2 || ''}`.trim();
+
 const openPrintWindow = (html) => {
   const win = window.open('', '_blank', 'width=900,height=1000');
   if (!win) {
@@ -752,12 +815,12 @@ const buildInvoiceHTML = (orders) => {
           </div>
           <div>
             <p class="label">Ship To</p>
-            <p>${addr.line1 || ''} ${addr.line2 || ''}</p>
+            <p>${streetLine(addr)}</p>
             <p class="muted">${addr.city || ''}, ${addr.state || ''} - ${addr.pincode || ''}</p>
           </div>
           <div>
             <p class="label">Payment</p>
-            <p class="muted capitalize">${order.paymentStatus || 'N/A'}</p>
+            <p class="muted capitalize">${order.paymentMethod === 'upi_qr' ? 'UPI · ' : ''}${order.paymentStatus || 'N/A'}</p>
             <p class="label" style="margin-top:8px;">Status</p>
             <p class="muted capitalize">${(order.orderStatus || '').replace(/_/g, ' ')}</p>
           </div>
@@ -837,11 +900,18 @@ const buildLabelHTML = (orders) => {
   const pages = orders.map((order, idx) => {
     const addr = order.shippingAddress || {};
     const items = order.items || [];
+
+    // PREPAID if paid, COD only for real COD orders, otherwise payment is still pending
+    let payTag = 'PAYMENT PENDING';
+    let payClass = '';
+    if (order.paymentStatus === 'paid') { payTag = 'PREPAID'; payClass = 'prepaid'; }
+    else if (order.paymentMethod === 'cod') { payTag = 'COD'; }
+
     return `
       <div class="label ${idx < orders.length - 1 ? 'break' : ''}">
         <div class="row-top">
           <span class="brand"><img src="${logo}" class="logo-sm" alt="" /> WA-KRITI</span>
-          <span class="cod ${order.paymentStatus === 'paid' ? 'prepaid' : ''}">${order.paymentStatus === 'paid' ? 'PREPAID' : 'COD'}</span>
+          <span class="cod ${payClass}">${payTag}</span>
         </div>
         <div class="block">
           <p class="label-sm">FROM</p>
@@ -851,7 +921,7 @@ const buildLabelHTML = (orders) => {
         <div class="block">
           <p class="label-sm">TO</p>
           <p><strong>${order.customer?.firstName || ''} ${order.customer?.lastName || ''}</strong></p>
-          <p>${addr.line1 || ''} ${addr.line2 || ''}</p>
+          <p>${streetLine(addr)}</p>
           <p>${addr.city || ''}, ${addr.state || ''} - ${addr.pincode || ''}</p>
           <p>Phone: ${addr.phone || ''}</p>
         </div>
@@ -918,6 +988,7 @@ const AdminOrders = () => {
   const [trackingNumber, setTrackingNumber] = useState('');
   const [shippingPartner, setShippingPartner] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [markingPaidId, setMarkingPaidId] = useState(null);
 
   // debounce search input
   useEffect(() => {
@@ -1036,6 +1107,26 @@ const AdminOrders = () => {
       toast.error(error?.response?.data?.message || 'Could not update order');
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  // Confirm a manual UPI QR payment after checking the money really arrived
+  const handleMarkPaid = async (order) => {
+    const ok = window.confirm(
+      `Confirm that you have received ${formatMoney(order.grandTotal)} for order ${order.orderNumber}?\n\n` +
+      'Check your bank / UPI app and the WhatsApp screenshot first. This cannot be undone.'
+    );
+    if (!ok) return;
+
+    setMarkingPaidId(order._id);
+    try {
+      await adminOrderApi.markPaid(order._id);
+      toast.success(`Payment confirmed for ${order.orderNumber}`);
+      queryClient.invalidateQueries({ queryKey: ['admin-orders'] });
+    } catch (error) {
+      toast.error(error?.response?.data?.message || 'Could not confirm payment');
+    } finally {
+      setMarkingPaidId(null);
     }
   };
 
@@ -1212,6 +1303,7 @@ const AdminOrders = () => {
               pageData.map((order) => {
                 const meta = STATUS_META[order.orderStatus] || { label: order.orderStatus, badge: 'bg-gray-100 text-gray-700' };
                 const today = isSameDay(new Date(order.createdAt), new Date());
+                const awaitingUpi = isAwaitingUpi(order);
                 return (
                   <tr key={order._id} className={selected.has(order._id) ? 'bg-bamboo-50/50' : ''}>
                     <td className="px-4 py-3">
@@ -1224,13 +1316,31 @@ const AdminOrders = () => {
                     <td className="px-4 py-3 text-bamboo-600">{order.customer?.firstName} {order.customer?.lastName}</td>
                     <td className="px-4 py-3 text-bamboo-600">{order.items?.length || 0}</td>
                     <td className="px-4 py-3 font-medium text-bamboo-700">{formatMoney(order.grandTotal)}</td>
-                    <td className="px-4 py-3 capitalize text-bamboo-600">{order.paymentStatus}</td>
+                    <td className="px-4 py-3 capitalize">
+                      {awaitingUpi ? (
+                        <span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold normal-case text-amber-700">
+                          UPI · Awaiting verification
+                        </span>
+                      ) : (
+                        <span className="text-bamboo-600">{paymentLabel(order)}</span>
+                      )}
+                    </td>
                     <td className="px-4 py-3">
                       <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${meta.badge}`}>{meta.label}</span>
                     </td>
                     <td className="px-4 py-3 text-xs text-bamboo-400">{formatDateTime(order.createdAt)}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
+                        {awaitingUpi && (
+                          <button
+                            onClick={() => handleMarkPaid(order)}
+                            disabled={markingPaidId === order._id}
+                            className="flex items-center gap-1 rounded-lg bg-green-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-green-700 disabled:opacity-50"
+                          >
+                            <BadgeCheck size={13} />
+                            {markingPaidId === order._id ? 'Confirming...' : 'Mark paid'}
+                          </button>
+                        )}
                         <button onClick={() => openStatusModal(order)} className="text-xs font-semibold text-bamboo-600 hover:underline">
                           Update
                         </button>

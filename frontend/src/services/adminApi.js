@@ -12,7 +12,7 @@ export const adminProductApi = {
 export const adminCategoryApi = {
   create: (formData) => api.post('/categories', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
   update: (id, formData) => api.put(`/categories/${id}`, formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
-  delete: (id) => api.delete(`/categories/${id}`),
+  delete: (id) => api.delete(`/categories/${id}`), 
 };
 
 export const adminOrderApi = {
@@ -21,6 +21,7 @@ export const adminOrderApi = {
   updateStatus: (id, payload) => api.patch(`/admin/orders/${id}/status`, payload),
   refund: (id, payload) => api.post(`/admin/orders/${id}/refund`, payload),
   cancel: (id) => api.post(`/admin/orders/${id}/cancel`),
+   markPaid: (id) => api.patch(`/orders/${id}/mark-paid`), 
 };
 
 export const adminCouponApi = {

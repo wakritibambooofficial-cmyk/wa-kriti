@@ -691,10 +691,6 @@
 
 
 
-
-
-
-
 import { useEffect, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -722,6 +718,7 @@ import { useSelector } from 'react-redux';
 import { addressApi, orderApi } from '../../services/commerceApi';
 import { cmsApi } from '../../services/cmsApi';
 import { useCart } from '../../hooks/useCart';
+// import { loadRazorpayScript } from '../../utils/loadRazorpay'; // Razorpay (disabled – using UPI QR)
 import Button from '../../components/ui/Button';
 import AddressForm from '../../components/checkout/AddressForm';
 
@@ -730,9 +727,10 @@ const FREE_SHIPPING_THRESHOLD = 999;
 const FLAT_SHIPPING_COST = 79;
 const DELIVERY_DAYS = { min: 4, max: 7 };
 const PAYMENT_METHOD = 'upi_qr';
+// const PAYMENT_METHOD = 'razorpay'; // Razorpay (disabled – using UPI QR)
 
-// TEMPORARY: replace with the client's real UPI ID (VPA)
-const UPI_ID = 'yourshop@upi';
+// TEMPORARY: replace with the client's real UPI ID (VPA) and shop name
+const UPI_ID = 'dattabibek2002-3@okaxis';
 const PAYEE_NAME = 'Wa-Kriti';
 
 const STEPS = [
@@ -804,7 +802,7 @@ const Checkout = () => {
   const [showSummary, setShowSummary] = useState(false);
 
   // UPI QR payment modal state
-  const [placedOrder, setPlacedOrder] = useState(null); // order created on the server
+  const [placedOrder, setPlacedOrder] = useState(null); // order saved on the server
   const [showPayModal, setShowPayModal] = useState(false);
 
   const { data: addresses = [], isLoading: addressesLoading } = useQuery({
@@ -854,44 +852,47 @@ const Checkout = () => {
 
   const whatsappNumber = settings?.whatsappNumber || settings?.contactPhone;
 
-  // Amount that goes into the QR: prefer the server's figure, fall back to the client total
-  const payableAmount = placedOrder?.totalAmount ?? grandTotal;
+  // The QR amount always comes from the server's saved order (grandTotal)
+  const payableAmount = placedOrder?.grandTotal ?? grandTotal;
 
-  // Pre-filled WhatsApp message with all order details
+  // WhatsApp message is built from the SAVED order, because the cart is
+  // cleared on the server once the order is created.
   const buildOrderMessage = () => {
-    const addr = selectedAddress;
-    const lines = [
+    const o = placedOrder;
+    if (!o) return '';
+    const a = o.shippingAddress || {};
+    return [
       'Hi Wa-Kriti, I have made the payment. Please confirm my order.',
       '',
-      `*Order No:* ${placedOrder?.orderNumber || '-'}`,
-      `*Customer:* ${user?.fullName || addr?.fullName || ''}`,
+      `*Order No:* ${o.orderNumber}`,
+      `*Customer:* ${user?.fullName || a.fullName || ''}`,
       '',
       '*Items:*',
-      ...items.map(
+      ...o.items.map(
         (item, i) =>
-          `${i + 1}. ${item.name} × ${item.quantity} = ${formatINR(item.price * item.quantity)}\n   Image: ${item.image}`
+          `${i + 1}. ${item.name} × ${item.quantity} = ${formatINR(item.subtotal)}\n   Image: ${item.image || '-'}`
       ),
       '',
-      `Subtotal: ${formatINR(subtotal)}`,
-      ...(discount > 0 ? [`Discount${coupon?.code ? ` (${coupon.code})` : ''}: -${formatINR(discount)}`] : []),
-      `Delivery: ${shippingCost === 0 ? 'FREE' : formatINR(shippingCost)}`,
-      `*Total Paid: ${formatINR(payableAmount)}*`,
+      `Subtotal: ${formatINR(o.subtotal)}`,
+      ...(o.discount > 0 ? [`Discount${o.couponCode ? ` (${o.couponCode})` : ''}: -${formatINR(o.discount)}`] : []),
+      `Delivery: ${o.shippingCost === 0 ? 'FREE' : formatINR(o.shippingCost)}`,
+      `*Total Paid: ${formatINR(o.grandTotal)}*`,
       '',
       '*Delivery Address:*',
-      addr?.fullName,
-      `${addr?.addressLine1}${addr?.addressLine2 ? `, ${addr.addressLine2}` : ''}`,
-      `${addr?.city}, ${addr?.state} - ${addr?.pincode}`,
-      `Phone: ${addr?.phone}`,
-      ...(notes ? ['', `*Delivery notes:* ${notes}`] : []),
+      a.fullName,
+      `${a.addressLine1}${a.addressLine2 ? `, ${a.addressLine2}` : ''}`,
+      `${a.city}, ${a.state} - ${a.pincode}`,
+      `Phone: ${a.phone}`,
+      ...(o.notes ? ['', `*Delivery notes:* ${o.notes}`] : []),
       '',
       '📎 Payment screenshot attached below.',
-    ];
-    return lines.filter((l) => l !== undefined).join('\n');
+    ].join('\n');
   };
 
   const confirmationLink = buildWhatsAppLink(whatsappNumber, buildOrderMessage());
   const helpLink = buildWhatsAppLink(whatsappNumber, 'Hi Wa-Kriti, I have a query regarding my order/product.');
 
+  // Cart is emptied server-side after the order is created, so only redirect when no order was placed
   if (items.length === 0 && !placedOrder) return <Navigate to="/cart" replace />;
 
   /* ---------- Actions ---------- */
@@ -907,6 +908,7 @@ const Checkout = () => {
     }
   };
 
+  /* ---------- ACTIVE: UPI QR flow ---------- */
   const handlePlaceOrder = async () => {
     if (isPlacingOrder) return;
     if (!selectedAddressId) {
@@ -915,7 +917,7 @@ const Checkout = () => {
       return;
     }
 
-    // Order already created (user closed the modal earlier) – just reopen it, avoid duplicates
+    // Order already created (user closed the modal earlier) – reopen it, avoid duplicates
     if (placedOrder) {
       setShowPayModal(true);
       return;
@@ -944,11 +946,113 @@ const Checkout = () => {
       state: {
         orderNumber: placedOrder.orderNumber,
         orderId: placedOrder._id,
-        shippingAddress: selectedAddress,
+        shippingAddress: placedOrder.shippingAddress,
         paymentPending: true,
       },
     });
   };
+
+  /* ---------- DISABLED: Razorpay flow (kept for reference / easy switch back) ---------- */
+  // To switch back: rename this to handlePlaceOrder, set PAYMENT_METHOD = 'razorpay',
+  // re-enable the loadRazorpayScript import, and hide the UPI modal.
+  /*
+  const handlePlaceOrderRazorpay = async () => {
+    if (isPlacingOrder) return;
+    if (!selectedAddressId) {
+      toast.error('Please choose where we should deliver your order');
+      goToStep(0);
+      return;
+    }
+
+    setIsPlacingOrder(true);
+    try {
+      const { data } = await orderApi.checkout({
+        shippingAddressId: selectedAddressId,
+        paymentMethod: 'razorpay',
+        notes,
+      });
+
+      const scriptLoaded = await loadRazorpayScript();
+      if (!scriptLoaded) {
+        toast.error('Could not load the payment window. Please check your connection and try again.');
+        setIsPlacingOrder(false);
+        return;
+      }
+
+      const { razorpay: rzp, order } = data.data;
+      let completed = false;
+
+      const razorpayCheckout = new window.Razorpay({
+        key: rzp.keyId,
+        amount: rzp.amount,
+        currency: rzp.currency,
+        order_id: rzp.orderId,
+        name: 'Wa-Kriti',
+        description: `Order ${order.orderNumber}`,
+        theme: { color: '#3F5B3E' },
+        prefill: {
+          name: user?.fullName,
+          email: user?.email,
+          contact: user?.phone || '',
+        },
+        handler: async (response) => {
+          completed = true;
+          try {
+            await orderApi.verifyPayment({
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+            });
+            queryClient.invalidateQueries({ queryKey: ['cart'] });
+            toast.success('Payment successful! Your order is confirmed.');
+            navigate('/order-success', {
+              state: {
+                orderNumber: order.orderNumber,
+                orderId: order._id,
+                shippingAddress: selectedAddress,
+              },
+            });
+          } catch (error) {
+            navigate('/order-failed', { state: { message: error?.response?.data?.message } });
+          }
+        },
+        modal: {
+          ondismiss: async () => {
+            if (completed) return;
+            try {
+              await orderApi.paymentFailed({
+                razorpay_order_id: rzp.orderId,
+                error: { description: 'Payment cancelled by user' },
+              });
+            } catch (_) {
+              // ignore – customer just closed the window
+            }
+            setIsPlacingOrder(false);
+            toast('Payment cancelled. Your items are still in your cart.', { icon: '⚠️' });
+          },
+        },
+      });
+
+      razorpayCheckout.on('payment.failed', async (response) => {
+        completed = true;
+        try {
+          await orderApi.paymentFailed({
+            razorpay_order_id: rzp.orderId,
+            error: response.error,
+          });
+        } catch (_) {
+          // ignore
+        }
+        navigate('/order-failed', { state: { message: response.error?.description } });
+      });
+
+      razorpayCheckout.open();
+    } catch (error) {
+      toast.error(error?.response?.data?.message || 'Could not place your order. Please try again.');
+      setIsPlacingOrder(false);
+    }
+  };
+  */
 
   const primaryAction =
     step === 0
@@ -982,7 +1086,7 @@ const Checkout = () => {
               <div key={key} className="flex flex-1 items-center gap-3">
                 <button
                   type="button"
-                  disabled={!done}
+                  disabled={!done || !!placedOrder}
                   onClick={() => done && goToStep(idx)}
                   className="flex items-center gap-2 disabled:cursor-default"
                 >

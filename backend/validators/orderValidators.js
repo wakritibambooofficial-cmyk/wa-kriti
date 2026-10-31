@@ -80,7 +80,7 @@ const objectId = z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid ID');
 const checkoutSchema = z.object({
   shippingAddressId: objectId,
   billingAddressId: objectId.optional().nullable(),
-  paymentMethod: z.enum(['razorpay', 'cod', 'wallet']).optional().default('razorpay'),
+  paymentMethod: z.enum(['razorpay', 'cod', 'wallet','upi_qr']).optional().default('razorpay'),
   notes: z.string().optional().default(''),
   giftWrap: z.boolean().optional().default(false),
   giftMessage: z.string().optional().default(''),
