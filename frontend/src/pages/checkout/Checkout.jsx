@@ -687,11 +687,7 @@
 
 // export default Checkout;
 
-
-
-
-
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Helmet } from 'react-helmet-async';
@@ -709,8 +705,10 @@ import {
   FiEdit2,
   FiChevronDown,
   FiTag,
-  FiX,
   FiSmartphone,
+  FiAlertCircle,
+  FiGrid,
+  FiClock,
 } from 'react-icons/fi';
 import { FaWhatsapp } from 'react-icons/fa';
 import { useSelector } from 'react-redux';
@@ -729,9 +727,22 @@ const DELIVERY_DAYS = { min: 4, max: 7 };
 const PAYMENT_METHOD = 'upi_qr';
 // const PAYMENT_METHOD = 'razorpay'; // Razorpay (disabled – using UPI QR)
 
-// TEMPORARY: replace with the client's real UPI ID (VPA) and shop name
 const UPI_ID = 'dattabibek2002-3@okaxis';
 const PAYEE_NAME = 'Wa-Kriti';
+
+// A started payment is remembered this long (survives refresh / app switching)
+const SESSION_TTL_MS = 24 * 60 * 60 * 1000;
+// The QR code is visible for this long, then hides itself
+const QR_TTL_MS = 5 * 60 * 1000;
+
+// UPI apps shown on mobile. A website cannot detect which apps are installed,
+// so each button simply tries to open that app (the phone ignores it if not installed).
+const UPI_APPS = [
+  { key: 'gpay', label: 'Google Pay', scheme: 'tez://upi/pay', badge: 'G', badgeClass: 'bg-blue-600 text-white' },
+  { key: 'phonepe', label: 'PhonePe', scheme: 'phonepe://pay', badge: 'Pe', badgeClass: 'bg-purple-600 text-white' },
+  { key: 'paytm', label: 'Paytm', scheme: 'paytmmp://pay', badge: 'P', badgeClass: 'bg-sky-500 text-white' },
+  { key: 'upi', label: 'Other UPI app', scheme: 'upi://pay', badge: 'UPI', badgeClass: 'bg-bamboo-600 text-white' },
+];
 
 const STEPS = [
   { key: 'address', label: 'Delivery', icon: FiMapPin },
@@ -760,6 +771,16 @@ const getDeliveryWindow = () => {
   return `${formatDate(from)} – ${formatDate(to)}`;
 };
 
+const isMobileDevice = () =>
+  typeof navigator !== 'undefined' && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+const formatCountdown = (ms) => {
+  const total = Math.max(0, Math.ceil(ms / 1000));
+  const m = Math.floor(total / 60);
+  const s = total % 60;
+  return `${m}:${String(s).padStart(2, '0')}`;
+};
+
 // Builds a wa.me link from any phone format (defaults to +91 for 10-digit numbers)
 const buildWhatsAppLink = (rawNumber, message) => {
   let digits = String(rawNumber || '').replace(/\D/g, '');
@@ -768,17 +789,54 @@ const buildWhatsAppLink = (rawNumber, message) => {
   return `https://wa.me/${digits}?text=${encodeURIComponent(message)}`;
 };
 
-// Dynamic UPI payment link: amount + order reference are baked into the QR
-const buildUpiLink = ({ amount, orderNumber }) => {
-  const params = new URLSearchParams({
+// UPI payment parameters: amount + payment reference are baked in
+const buildUpiParams = ({ amount, reference }) =>
+  new URLSearchParams({
     pa: UPI_ID,
     pn: PAYEE_NAME,
     am: Number(amount).toFixed(2),
     cu: 'INR',
-    tn: `Order ${orderNumber}`,
-    tr: String(orderNumber),
-  });
-  return `upi://pay?${params.toString()}`;
+    tn: `Wa-Kriti ${reference}`,
+    tr: String(reference),
+  }).toString();
+
+// Unique reference for one payment attempt (shown in the customer's UPI app / bank statement)
+const generatePaymentReference = () =>
+  `WKP${Date.now().toString().slice(-8)}${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
+
+/* ---------- Payment session (kept in localStorage so a refresh doesn't lose it) ---------- */
+const readSession = (key) => {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    const s = JSON.parse(raw);
+    if (!s?.reference || !s?.createdAt || Date.now() - s.createdAt > SESSION_TTL_MS) {
+      localStorage.removeItem(key);
+      return null;
+    }
+    // If the page was reloaded while the customer was in their UPI app,
+    // they have come back — ask whether the payment went through.
+    if (s.status === 'awaiting') s.status = 'returned';
+    return s;
+  } catch {
+    return null;
+  }
+};
+
+const writeSession = (key, session) => {
+  try {
+    localStorage.setItem(key, JSON.stringify(session));
+  } catch {
+    /* storage unavailable – the flow still works until the page is refreshed */
+  }
+};
+
+const removeSession = (key) => {
+  try {
+    localStorage.removeItem(key);
+  } catch {
+    /* ignore */
+  }
 };
 
 const PriceRow = ({ label, value, highlight, muted }) => (
@@ -794,16 +852,23 @@ const Checkout = () => {
   const { user } = useSelector((state) => state.auth);
   const { items, subtotal, coupon } = useCart();
 
-  const [step, setStep] = useState(0);
-  const [selectedAddressId, setSelectedAddressId] = useState(null);
-  const [isAddingAddress, setIsAddingAddress] = useState(false);
-  const [notes, setNotes] = useState('');
-  const [isPlacingOrder, setIsPlacingOrder] = useState(false);
-  const [showSummary, setShowSummary] = useState(false);
+  const storageKey = `wk_upi_payment_${user?._id || user?.id || 'guest'}`;
 
-  // UPI QR payment modal state
-  const [placedOrder, setPlacedOrder] = useState(null); // order saved on the server
-  const [showPayModal, setShowPayModal] = useState(false);
+  // A payment started earlier (before a refresh / app switch) is restored here
+  const [initialSession] = useState(() => readSession(storageKey));
+  const [paymentSession, setPaymentSession] = useState(initialSession);
+
+  const [step, setStep] = useState(initialSession ? 1 : 0);
+  const [selectedAddressId, setSelectedAddressId] = useState(initialSession?.addressId || null);
+  const [isAddingAddress, setIsAddingAddress] = useState(false);
+  const [notes, setNotes] = useState(initialSession?.notes || '');
+  const [isPlacingOrder, setIsPlacingOrder] = useState(false);
+  const [orderError, setOrderError] = useState('');
+  const [showSummary, setShowSummary] = useState(false);
+  const [now, setNow] = useState(() => Date.now()); // ticks while the QR countdown runs
+
+  const appOpenedRef = useRef(false); // did the page actually go to the background after tapping an app?
+  const isMobile = isMobileDevice();
 
   const { data: addresses = [], isLoading: addressesLoading } = useQuery({
     queryKey: ['addresses'],
@@ -817,6 +882,23 @@ const Checkout = () => {
     select: (res) => res.data.data.settings,
   });
 
+  /* ---------- Payment session helpers ---------- */
+  const updateSession = (patch) => {
+    setPaymentSession((prev) => {
+      if (!prev) return prev;
+      const next = { ...prev, ...patch };
+      writeSession(storageKey, next);
+      return next;
+    });
+  };
+
+  const clearPaymentSession = () => {
+    removeSession(storageKey);
+    setPaymentSession(null);
+    setOrderError('');
+  };
+
+  /* ---------- Effects ---------- */
   useEffect(() => {
     if (!selectedAddressId && addresses.length) {
       const def = addresses.find((a) => a.isDefault) || addresses[0];
@@ -824,13 +906,45 @@ const Checkout = () => {
     }
   }, [addresses, selectedAddressId]);
 
-  // Lock page scroll while the modal is open
+  // Lock page scroll while the payment window is open
   useEffect(() => {
-    document.body.style.overflow = showPayModal ? 'hidden' : '';
+    document.body.style.overflow = paymentSession ? 'hidden' : '';
     return () => {
       document.body.style.overflow = '';
     };
-  }, [showPayModal]);
+  }, [paymentSession]);
+
+  // QR countdown: tick every second only while a QR is showing
+  const qrExpiresAt = paymentSession?.qrExpiresAt || null;
+  useEffect(() => {
+    if (!qrExpiresAt || qrExpiresAt <= Date.now()) return undefined;
+    setNow(Date.now());
+    const id = setInterval(() => {
+      const t = Date.now();
+      setNow(t);
+      if (t >= qrExpiresAt) clearInterval(id);
+    }, 1000);
+    return () => clearInterval(id);
+  }, [qrExpiresAt]);
+
+  // Detect the customer coming back from their UPI app
+  const sessionStatus = paymentSession?.status;
+  useEffect(() => {
+    if (sessionStatus !== 'awaiting') return undefined;
+
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') {
+        appOpenedRef.current = true; // the UPI app really opened
+      } else if (document.visibilityState === 'visible' && appOpenedRef.current) {
+        appOpenedRef.current = false;
+        updateSession({ status: 'returned' });
+      }
+    };
+
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => document.removeEventListener('visibilitychange', onVisibility);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionStatus]);
 
   const goToStep = (n) => {
     setStep(n);
@@ -851,49 +965,55 @@ const Checkout = () => {
   const deliveryWindow = getDeliveryWindow();
 
   const whatsappNumber = settings?.whatsappNumber || settings?.contactPhone;
+  const helpLink = buildWhatsAppLink(whatsappNumber, 'Hi Wa-Kriti, I have a query regarding my order/product.');
 
-  // The QR amount always comes from the server's saved order (grandTotal)
-  const payableAmount = placedOrder?.grandTotal ?? grandTotal;
-
-  // WhatsApp message is built from the SAVED order, because the cart is
-  // cleared on the server once the order is created.
-  const buildOrderMessage = () => {
-    const o = placedOrder;
-    if (!o) return '';
-    const a = o.shippingAddress || {};
+  // WhatsApp message is built from the snapshot taken when the payment started,
+  // so it always matches what the customer actually paid for.
+  const buildPaymentMessage = (s) => {
+    const a = s.address || {};
     return [
-      'Hi Wa-Kriti, I have made the payment. Please confirm my order.',
+      'Hi Wa-Kriti, I have made the payment. Please find my payment screenshot below.',
       '',
-      `*Order No:* ${o.orderNumber}`,
+      `*Payment Ref:* ${s.reference}`,
       `*Customer:* ${user?.fullName || a.fullName || ''}`,
       '',
       '*Items:*',
-      ...o.items.map(
+      ...s.items.map(
         (item, i) =>
-          `${i + 1}. ${item.name} × ${item.quantity} = ${formatINR(item.subtotal)}\n   Image: ${item.image || '-'}`
+          `${i + 1}. ${item.name} × ${item.quantity} = ${formatINR(item.price * item.quantity)}\n   Image: ${item.image || '-'}`
       ),
       '',
-      `Subtotal: ${formatINR(o.subtotal)}`,
-      ...(o.discount > 0 ? [`Discount${o.couponCode ? ` (${o.couponCode})` : ''}: -${formatINR(o.discount)}`] : []),
-      `Delivery: ${o.shippingCost === 0 ? 'FREE' : formatINR(o.shippingCost)}`,
-      `*Total Paid: ${formatINR(o.grandTotal)}*`,
+      `Subtotal: ${formatINR(s.subtotal)}`,
+      ...(s.discount > 0 ? [`Discount${s.couponCode ? ` (${s.couponCode})` : ''}: -${formatINR(s.discount)}`] : []),
+      `Delivery: ${s.shippingCost === 0 ? 'FREE' : formatINR(s.shippingCost)}`,
+      `*Amount Paid: ${formatINR(s.amount)}*`,
       '',
       '*Delivery Address:*',
       a.fullName,
-      `${a.addressLine1}${a.addressLine2 ? `, ${a.addressLine2}` : ''}`,
+      `${a.addressLine1 || ''}${a.addressLine2 ? `, ${a.addressLine2}` : ''}`,
       `${a.city}, ${a.state} - ${a.pincode}`,
       `Phone: ${a.phone}`,
-      ...(o.notes ? ['', `*Delivery notes:* ${o.notes}`] : []),
+      ...(s.notes ? ['', `*Delivery notes:* ${s.notes}`] : []),
       '',
       '📎 Payment screenshot attached below.',
     ].join('\n');
   };
 
-  const confirmationLink = buildWhatsAppLink(whatsappNumber, buildOrderMessage());
-  const helpLink = buildWhatsAppLink(whatsappNumber, 'Hi Wa-Kriti, I have a query regarding my order/product.');
+  const whatsappConfirmLink = paymentSession
+    ? buildWhatsAppLink(whatsappNumber, buildPaymentMessage(paymentSession))
+    : null;
 
-  // Cart is emptied server-side after the order is created, so only redirect when no order was placed
-  if (items.length === 0 && !placedOrder) return <Navigate to="/cart" replace />;
+  const upiParams = paymentSession
+    ? buildUpiParams({ amount: paymentSession.amount, reference: paymentSession.reference })
+    : '';
+  const qrValue = upiParams ? `upi://pay?${upiParams}` : '';
+
+  const qrVisible = !!paymentSession?.qrExpiresAt && paymentSession.qrExpiresAt > now;
+  const qrRemaining = paymentSession?.qrExpiresAt ? paymentSession.qrExpiresAt - now : 0;
+  const launchedApp = UPI_APPS.find((a) => a.key === paymentSession?.appKey);
+
+  // The cart is only emptied once the order is placed, so only redirect when no payment is in progress
+  if (items.length === 0 && !paymentSession) return <Navigate to="/cart" replace />;
 
   /* ---------- Actions ---------- */
   const handleAddAddress = async (values) => {
@@ -908,53 +1028,127 @@ const Checkout = () => {
     }
   };
 
-  /* ---------- ACTIVE: UPI QR flow ---------- */
-  const handlePlaceOrder = async () => {
-    if (isPlacingOrder) return;
-    if (!selectedAddressId) {
+  /* ---------- ACTIVE: UPI flow ---------- */
+
+  // STEP 1: "Pay" click — NO order is created here. We only open the payment window
+  // and remember the payment details so a refresh doesn't lose them.
+  const handleStartPayment = () => {
+    if (!selectedAddressId || !selectedAddress) {
       toast.error('Please choose where we should deliver your order');
       goToStep(0);
       return;
     }
+    if (paymentSession) return; // already open
 
-    // Order already created (user closed the modal earlier) – reopen it, avoid duplicates
-    if (placedOrder) {
-      setShowPayModal(true);
+    const session = {
+      reference: generatePaymentReference(),
+      status: 'choose', // choose -> awaiting -> returned -> claimed
+      appKey: null,
+      qrExpiresAt: null,
+      amount: grandTotal,
+      addressId: selectedAddressId,
+      address: {
+        fullName: selectedAddress.fullName,
+        phone: selectedAddress.phone,
+        addressLine1: selectedAddress.addressLine1,
+        addressLine2: selectedAddress.addressLine2,
+        city: selectedAddress.city,
+        state: selectedAddress.state,
+        pincode: selectedAddress.pincode,
+      },
+      notes,
+      items: items.map((i) => ({ name: i.name, quantity: i.quantity, price: i.price, image: i.image })),
+      subtotal,
+      discount,
+      couponCode: coupon?.code || null,
+      shippingCost,
+      whatsappOpened: false,
+      createdAt: Date.now(),
+    };
+
+    writeSession(storageKey, session);
+    setPaymentSession(session);
+  };
+
+  // Customer taps a UPI app: open it with the amount locked
+  const handlePayWithApp = (app) => {
+    if (!paymentSession) return;
+    appOpenedRef.current = false;
+    updateSession({ status: 'awaiting', appKey: app.key, qrExpiresAt: null });
+
+    // If the page never goes to the background, the app probably isn't installed
+    setTimeout(() => {
+      if (!appOpenedRef.current && document.visibilityState === 'visible') {
+        toast(`${app.label} didn't open. Try another app or use “Show QR”.`, { icon: '⚠️' });
+        updateSession({ status: 'choose', appKey: null });
+      }
+    }, 2500);
+
+    window.location.href = `${app.scheme}?${upiParams}`;
+  };
+
+  const handleShowQr = () => {
+    updateSession({ qrExpiresAt: Date.now() + QR_TTL_MS, status: 'choose', appKey: null });
+    setNow(Date.now());
+  };
+
+  const handleHideQr = () => updateSession({ qrExpiresAt: null });
+
+  // "I've paid" (QR path) or "Yes, successful" (app path)
+  const handlePaymentDone = () => updateSession({ status: 'claimed', qrExpiresAt: null });
+
+  // "No, it failed" — back to the payment options
+  const handlePaymentNotDone = () => updateSession({ status: 'choose', appKey: null });
+
+  // FINAL STEP: the customer came back from WhatsApp — ONLY NOW the order request goes to the backend
+  const handleConfirmOrder = async () => {
+    if (isPlacingOrder || !paymentSession) return;
+    if (!paymentSession.whatsappOpened) {
+      toast.error('Please send your payment screenshot on WhatsApp first');
       return;
     }
 
     setIsPlacingOrder(true);
+    setOrderError('');
     try {
       const { data } = await orderApi.checkout({
-        shippingAddressId: selectedAddressId,
+        shippingAddressId: paymentSession.addressId,
         paymentMethod: PAYMENT_METHOD,
-        notes,
+        notes: paymentSession.notes,
+        paymentReference: paymentSession.reference,
+        expectedAmount: paymentSession.amount,
       });
-      setPlacedOrder(data.data.order);
-      setShowPayModal(true);
+      const order = data.data.order;
+
+      removeSession(storageKey);
+      setPaymentSession(null);
+
+      navigate('/order-success', {
+        state: {
+          orderNumber: order.orderNumber,
+          orderId: order._id,
+          shippingAddress: order.shippingAddress,
+          paymentPending: true,
+        },
+      });
+      queryClient.invalidateQueries({ queryKey: ['cart'] });
     } catch (error) {
-      toast.error(error?.response?.data?.message || 'Could not place your order. Please try again.');
+      setOrderError(error?.response?.data?.message || 'Could not place your order. Please try again.');
     } finally {
       setIsPlacingOrder(false);
     }
   };
 
-  const handleFinish = () => {
-    queryClient.invalidateQueries({ queryKey: ['cart'] });
-    setShowPayModal(false);
-    navigate('/order-success', {
-      state: {
-        orderNumber: placedOrder.orderNumber,
-        orderId: placedOrder._id,
-        shippingAddress: placedOrder.shippingAddress,
-        paymentPending: true,
-      },
-    });
+  const handleCancelPayment = () => {
+    const ok = window.confirm(
+      'Cancel this payment and start over?\n\nIf you have already paid, please DO NOT cancel — send your screenshot on WhatsApp and place the order instead.'
+    );
+    if (ok) clearPaymentSession();
   };
 
   /* ---------- DISABLED: Razorpay flow (kept for reference / easy switch back) ---------- */
-  // To switch back: rename this to handlePlaceOrder, set PAYMENT_METHOD = 'razorpay',
-  // re-enable the loadRazorpayScript import, and hide the UPI modal.
+  // To switch back: rename this to handleStartPayment, set PAYMENT_METHOD = 'razorpay',
+  // re-enable the loadRazorpayScript import, and remove the UPI payment window below.
   /*
   const handlePlaceOrderRazorpay = async () => {
     if (isPlacingOrder) return;
@@ -1057,9 +1251,7 @@ const Checkout = () => {
   const primaryAction =
     step === 0
       ? { label: 'Deliver to this address', onClick: () => goToStep(1), disabled: !selectedAddressId || showAddressForm }
-      : { label: `Pay ${formatINR(grandTotal)} securely`, onClick: handlePlaceOrder, disabled: false };
-
-  const upiLink = placedOrder ? buildUpiLink({ amount: payableAmount, orderNumber: placedOrder.orderNumber }) : '';
+      : { label: `Pay ${formatINR(grandTotal)} securely`, onClick: handleStartPayment, disabled: false };
 
   /* ---------- UI ---------- */
   return (
@@ -1086,7 +1278,7 @@ const Checkout = () => {
               <div key={key} className="flex flex-1 items-center gap-3">
                 <button
                   type="button"
-                  disabled={!done || !!placedOrder}
+                  disabled={!done || !!paymentSession}
                   onClick={() => done && goToStep(idx)}
                   className="flex items-center gap-2 disabled:cursor-default"
                 >
@@ -1262,7 +1454,7 @@ const Checkout = () => {
                           {notes && <p className="mt-2 text-sm italic text-bamboo-500">“{notes}”</p>}
                         </div>
                       </div>
-                      {!placedOrder && (
+                      {!paymentSession && (
                         <button
                           type="button"
                           onClick={() => goToStep(0)}
@@ -1308,17 +1500,17 @@ const Checkout = () => {
                     <div className="mt-4 flex items-start gap-3 rounded-xl border-2 border-bamboo-600 bg-bamboo-50 p-4">
                       <FiSmartphone className="mt-0.5 shrink-0 text-bamboo-600" size={20} />
                       <div>
-                        <p className="font-semibold text-bamboo-900">Pay via UPI QR</p>
+                        <p className="font-semibold text-bamboo-900">Pay via UPI</p>
                         <p className="mt-0.5 text-sm text-bamboo-600">
-                          Scan the QR with GPay, PhonePe, Paytm or any UPI app.
+                          Choose your UPI app, or scan a QR code.
                         </p>
                         <p className="mt-2 flex items-center gap-1.5 text-xs text-bamboo-500">
-                          <FiShield size={12} /> The amount is fixed in the QR and can’t be changed.
+                          <FiShield size={12} /> The amount is fixed and can’t be changed.
                         </p>
                       </div>
                     </div>
                     <p className="mt-3 text-xs text-bamboo-400">
-                      After paying, you’ll share the payment screenshot with us on WhatsApp. Your order is confirmed once we verify the payment.
+                      After paying, you’ll share the payment screenshot with us on WhatsApp. Your order is placed after that, and confirmed once we verify the payment.
                     </p>
                   </div>
 
@@ -1344,10 +1536,10 @@ const Checkout = () => {
                   )}
 
                   <div className="hidden gap-3 lg:flex">
-                    <Button variant="secondary" onClick={() => goToStep(0)} disabled={!!placedOrder}>
+                    <Button variant="secondary" onClick={() => goToStep(0)} disabled={!!paymentSession}>
                       Back
                     </Button>
-                    <Button className="flex-1" onClick={primaryAction.onClick} isLoading={isPlacingOrder}>
+                    <Button className="flex-1" onClick={primaryAction.onClick}>
                       <span className="flex items-center justify-center gap-2">
                         <FiLock size={15} /> {primaryAction.label}
                       </span>
@@ -1470,20 +1662,17 @@ const Checkout = () => {
             <p className="text-[11px] text-bamboo-400">Total</p>
             <p className="font-display text-lg font-bold tabular-nums text-bamboo-900">{formatINR(grandTotal)}</p>
           </div>
-          <Button
-            className="flex-1"
-            disabled={primaryAction.disabled}
-            onClick={primaryAction.onClick}
-            isLoading={step === 1 && isPlacingOrder}
-          >
+          <Button className="flex-1" disabled={primaryAction.disabled} onClick={primaryAction.onClick}>
             {primaryAction.label}
           </Button>
         </div>
       </div>
 
-      {/* ================= UPI QR PAYMENT MODAL ================= */}
+      {/* ================= UPI PAYMENT WINDOW =================
+          Stays open (also after a refresh) until the order is placed or the customer cancels.
+          It can't be dismissed by clicking outside. */}
       <AnimatePresence>
-        {showPayModal && placedOrder && (
+        {paymentSession && (
           <motion.div
             className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-4"
             initial={{ opacity: 0 }}
@@ -1493,80 +1682,218 @@ const Checkout = () => {
             <motion.div
               role="dialog"
               aria-modal="true"
-              aria-label="Pay with UPI QR"
+              aria-label="Pay with UPI"
               initial={{ opacity: 0, y: 40 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 40 }}
               transition={{ duration: 0.3, ease: EASE }}
               className="relative max-h-[92vh] w-full max-w-md overflow-y-auto rounded-t-3xl bg-white p-6 sm:rounded-3xl"
             >
-              <button
-                type="button"
-                onClick={() => setShowPayModal(false)}
-                aria-label="Close"
-                className="absolute right-4 top-4 rounded-full p-1.5 text-bamboo-500 hover:bg-bamboo-50"
-              >
-                <FiX size={20} />
-              </button>
-
-              <h2 className="font-display text-xl font-bold text-bamboo-900">Scan & pay</h2>
-              <p className="mt-0.5 text-sm text-bamboo-500">Order {placedOrder.orderNumber}</p>
+              <h2 className="font-display text-xl font-bold text-bamboo-900">Complete your payment</h2>
+              <p className="mt-0.5 text-sm text-bamboo-500">
+                Reference: <span className="font-semibold tabular-nums">{paymentSession.reference}</span>
+              </p>
 
               {/* Amount card */}
               <div className="mt-4 rounded-2xl bg-bamboo-50 p-4 text-center">
                 <p className="text-xs font-medium uppercase tracking-wide text-bamboo-500">Amount to pay</p>
                 <p className="font-display text-3xl font-bold tabular-nums text-bamboo-900">
-                  {formatINR(payableAmount)}
+                  {formatINR(paymentSession.amount)}
                 </p>
               </div>
 
-              {/* Dynamic QR */}
-              <div className="mx-auto mt-4 w-fit rounded-2xl border border-bamboo-200 bg-white p-4">
-                <QRCodeSVG value={upiLink} size={208} level="M" includeMargin={false} />
-              </div>
-              <p className="mt-2 text-center text-xs text-bamboo-500">
-                This QR is generated for {formatINR(payableAmount)} only.
-              </p>
+              {/* ---------- PHASE: choose how to pay ---------- */}
+              {paymentSession.status === 'choose' && (
+                <div className="mt-5">
+                  <p className="text-sm font-semibold text-bamboo-900">1. Pay with a UPI app</p>
 
-              {/* Mobile: open UPI app directly */}
-              <a
-                href={upiLink}
-                className="mt-4 flex items-center justify-center gap-2 rounded-xl border-2 border-bamboo-600 py-2.5 text-sm font-semibold text-bamboo-700 lg:hidden"
-              >
-                <FiSmartphone size={16} /> Open UPI app to pay
-              </a>
+                  {isMobile ? (
+                    <div className="mt-3 grid grid-cols-2 gap-3">
+                      {UPI_APPS.map((app) => (
+                        <button
+                          key={app.key}
+                          type="button"
+                          onClick={() => handlePayWithApp(app)}
+                          className="flex items-center gap-2.5 rounded-xl border-2 border-bamboo-100 px-3 py-3 text-left transition-colors hover:border-bamboo-400 active:bg-bamboo-50"
+                        >
+                          <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold ${app.badgeClass}`}>
+                            {app.badge}
+                          </span>
+                          <span className="text-sm font-semibold text-bamboo-900">{app.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="mt-2 rounded-xl bg-amber-50 p-3 text-xs text-amber-800">
+                      UPI apps open only on a phone. On this device, use “Show QR code” below and scan it with any UPI app.
+                    </p>
+                  )}
 
-              {/* Step 2: WhatsApp */}
-              <div className="mt-5 rounded-2xl border border-bamboo-200/70 p-4">
-                <p className="text-sm font-semibold text-bamboo-900">After paying</p>
-                <ol className="mt-1.5 list-decimal space-y-1 pl-5 text-sm text-bamboo-600">
-                  <li>Take a screenshot of the successful payment.</li>
-                  <li>Tap the button below — your order details are pre-filled.</li>
-                  <li>Attach the screenshot in WhatsApp and press send.</li>
-                </ol>
+                  {/* QR (hidden until requested, then visible for 5 minutes) */}
+                  <div className="mt-4">
+                    {qrVisible ? (
+                      <div className="rounded-2xl border border-bamboo-200 p-4 text-center">
+                        <div className="mx-auto w-fit rounded-xl bg-white p-2">
+                          <QRCodeSVG value={qrValue} size={200} level="M" includeMargin={false} />
+                        </div>
+                        <p className="mt-2 flex items-center justify-center gap-1.5 text-xs font-medium text-bamboo-600">
+                          <FiClock size={13} /> QR expires in <span className="tabular-nums">{formatCountdown(qrRemaining)}</span>
+                        </p>
+                        <p className="mt-1 text-[11px] text-bamboo-400">
+                          Scan with any UPI app. The amount is fixed at {formatINR(paymentSession.amount)}.
+                        </p>
+                        <Button className="mt-3" fullWidth onClick={handlePaymentDone}>
+                          I’ve completed the payment
+                        </Button>
+                        <button
+                          type="button"
+                          onClick={handleHideQr}
+                          className="mt-2 text-xs font-medium text-bamboo-400 underline hover:text-bamboo-600"
+                        >
+                          Hide QR
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        {paymentSession.qrExpiresAt && (
+                          <p className="mb-2 text-center text-xs text-amber-700">
+                            The QR code expired. Show it again to get a fresh 5 minutes.
+                          </p>
+                        )}
+                        <button
+                          type="button"
+                          onClick={handleShowQr}
+                          className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-bamboo-300 py-3 text-sm font-semibold text-bamboo-700 hover:bg-bamboo-50"
+                        >
+                          <FiGrid size={16} /> {paymentSession.qrExpiresAt ? 'Show QR code again' : 'Show QR code'}
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
 
-                {confirmationLink ? (
-                  <a
-                    href={confirmationLink}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mt-4 flex items-center justify-center gap-2 rounded-xl bg-[#25D366] py-3 text-sm font-semibold text-white shadow-md transition-transform hover:scale-[1.01]"
-                  >
-                    <FaWhatsapp size={20} /> Send screenshot on WhatsApp
-                  </a>
-                ) : (
-                  <p className="mt-4 rounded-xl bg-amber-50 p-3 text-xs text-amber-800">
-                    WhatsApp number isn’t configured yet. Please contact support with your order number.
+              {/* ---------- PHASE: waiting for the UPI app ---------- */}
+              {paymentSession.status === 'awaiting' && (
+                <div className="mt-5 rounded-2xl border border-bamboo-200/70 p-4 text-center">
+                  <p className="text-sm font-semibold text-bamboo-900">
+                    Complete the payment in {launchedApp?.label || 'your UPI app'}
                   </p>
-                )}
-              </div>
+                  <p className="mt-1 text-xs text-bamboo-500">
+                    When you’re done, come back to this page — we’ll ask you to confirm.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handlePaymentNotDone}
+                    className="mt-3 text-xs font-medium text-bamboo-500 underline hover:text-bamboo-700"
+                  >
+                    Choose another way to pay
+                  </button>
+                </div>
+              )}
 
-              <Button className="mt-4" fullWidth onClick={handleFinish}>
-                I’ve sent the screenshot
-              </Button>
-              <p className="mt-2 text-center text-[11px] text-bamboo-400">
-                Your order is confirmed after we verify your payment.
-              </p>
+              {/* ---------- PHASE: back from the UPI app — was it successful? ---------- */}
+              {paymentSession.status === 'returned' && (
+                <div className="mt-5 rounded-2xl border border-bamboo-200/70 p-4">
+                  <p className="text-sm font-semibold text-bamboo-900">
+                    Welcome back! Was your payment of {formatINR(paymentSession.amount)} successful?
+                  </p>
+                  <p className="mt-1 text-xs text-bamboo-500">
+                    Please answer honestly — we check every payment against our bank before shipping.
+                  </p>
+                  <div className="mt-3 grid grid-cols-2 gap-3">
+                    <Button onClick={handlePaymentDone}>Yes, paid</Button>
+                    <Button variant="secondary" onClick={handlePaymentNotDone}>
+                      No, try again
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* ---------- PHASE: payment done — screenshot + place order ---------- */}
+              {paymentSession.status === 'claimed' && (
+                <>
+                  <p className="mt-5 flex items-center gap-1.5 text-sm font-medium text-green-700">
+                    <FiCheck size={15} /> Payment marked as done
+                  </p>
+
+                  {/* STEP 2 – WhatsApp */}
+                  <div className="mt-3 rounded-2xl border border-bamboo-200/70 p-4">
+                    <p className="text-sm font-semibold text-bamboo-900">2. Share the payment screenshot</p>
+                    <p className="mt-1 text-sm text-bamboo-600">
+                      Take a screenshot of the successful payment, open WhatsApp with the button below (your order details are
+                      pre-filled), attach the screenshot and press send.
+                    </p>
+
+                    {whatsappConfirmLink ? (
+                      <a
+                        href={whatsappConfirmLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={() => updateSession({ whatsappOpened: true })}
+                        className="mt-3 flex items-center justify-center gap-2 rounded-xl bg-[#25D366] py-3 text-sm font-semibold text-white shadow-md transition-transform hover:scale-[1.01]"
+                      >
+                        <FaWhatsapp size={20} /> Send screenshot on WhatsApp
+                      </a>
+                    ) : (
+                      <p className="mt-3 rounded-xl bg-amber-50 p-3 text-xs text-amber-800">
+                        WhatsApp number isn’t configured yet. Please try again shortly.
+                      </p>
+                    )}
+
+                    {paymentSession.whatsappOpened && (
+                      <p className="mt-2 flex items-center gap-1.5 text-xs font-medium text-green-700">
+                        <FiCheck size={13} /> WhatsApp opened — come back here after sending the screenshot.
+                      </p>
+                    )}
+                  </div>
+
+                  {/* STEP 3 – Place the order (the only point where the order request is sent) */}
+                  <div className="mt-5">
+                    <p className="text-sm font-semibold text-bamboo-900">3. Place your order</p>
+
+                    {orderError && (
+                      <div className="mt-2 flex items-start gap-2 rounded-xl bg-red-50 p-3 text-xs text-red-700">
+                        <FiAlertCircle className="mt-0.5 shrink-0" size={14} />
+                        <div>
+                          <p>{orderError}</p>
+                          {helpLink && (
+                            <a href={helpLink} target="_blank" rel="noopener noreferrer" className="mt-1 inline-block font-semibold underline">
+                              Contact us on WhatsApp
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    <Button
+                      className="mt-3"
+                      fullWidth
+                      onClick={handleConfirmOrder}
+                      isLoading={isPlacingOrder}
+                      disabled={!paymentSession.whatsappOpened}
+                    >
+                      I’ve shared the screenshot — place my order
+                    </Button>
+                    {!paymentSession.whatsappOpened && (
+                      <p className="mt-2 text-center text-[11px] text-bamboo-400">
+                        This unlocks after you open WhatsApp in step 2.
+                      </p>
+                    )}
+                    <p className="mt-2 text-center text-[11px] text-bamboo-400">
+                      Your order is confirmed after we verify your payment.
+                    </p>
+                  </div>
+                </>
+              )}
+
+              <button
+                type="button"
+                onClick={handleCancelPayment}
+                className="mt-4 block w-full text-center text-xs font-medium text-bamboo-400 underline hover:text-bamboo-600"
+              >
+                Cancel and start over
+              </button>
             </motion.div>
           </motion.div>
         )}
