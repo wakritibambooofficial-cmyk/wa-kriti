@@ -1,4 +1,5 @@
 
+
 // import { useEffect, useRef, useState } from 'react';
 // import { createPortal } from 'react-dom';
 // import { Link, useNavigate } from 'react-router-dom';
@@ -7,7 +8,7 @@
 // import { motion, AnimatePresence } from 'framer-motion';
 // import {
 //   FiSearch, FiHeart, FiShoppingBag, FiMenu, FiX,
-//   FiChevronRight, FiChevronDown, FiGrid, FiPackage, FiLogOut,
+//   FiChevronRight, FiChevronDown, FiGrid, FiPackage, FiLogOut, FiUser,
 // } from 'react-icons/fi';
 
 // import { categoryApi } from '../../services/productApi';
@@ -42,6 +43,7 @@
 //   const profileRef = useRef(null);
 //   const shopRef = useRef(null);
 //   const searchInputRef = useRef(null);
+//   const mobileSearchRef = useRef(null);
 
 //   const { isAuthenticated, user } = useSelector((state) => state.auth);
 //   const { count: wishlistCount } = useWishlist();
@@ -123,8 +125,8 @@
 //   return (
 //     <header className={`sticky top-0 z-40 transition-shadow duration-300 ${scrolled ? 'shadow-soft' : ''}`}>
 //       {/* ── Main bar: logo block on the left, actions on the right ── */}
-//       <div className={`bg-white transition-[padding] duration-300 ${scrolled ? 'py-2.5' : 'py-4'}`}>
-//         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 lg:px-8">
+//       <div className={`bg-white transition-[padding] duration-300 ${scrolled ? 'py-2.5' : 'py-2 sm:py-4'}`}>
+//         <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 px-4 sm:gap-4 lg:px-8">
 //           {/* Left cell — mobile menu + logo + brand + tagline */}
 //           <div className="flex min-w-0 items-center gap-3">
 //             <button
@@ -140,17 +142,18 @@
 //                 <img
 //                   src={settings.logo.url}
 //                   alt={settings.websiteName}
-//                   className={`w-auto shrink-0 object-contain transition-all duration-300 ${scrolled ? 'h-11' : 'h-16'}`}
+//                   className={`w-auto shrink-0 object-contain transition-all duration-300 ${scrolled ? 'h-9 sm:h-11' : 'h-10 sm:h-16'}`}
 //                 />
 //               )}
 
-//               <div className="flex min-w-0 flex-col justify-center leading-tight">
+//               {/* Brand text + tagline: hidden on mobile when a logo exists */}
+//               <div className={`min-w-0 flex-col justify-center leading-tight ${settings?.logo?.url ? 'hidden sm:flex' : 'flex'}`}>
 //                 <span
-//   className={`flex items-start font-display font-extrabold tracking-wide text-bamboo-700 transition-all duration-300 ${scrolled ? 'text-xl' : 'text-2xl'}`}
-// >
-//   <span className="truncate">{settings?.websiteName || 'WA-KRITI'}</span>
-//   <sup className="ml-0.5 mt-0.5 text-[9px] font-semibold leading-none tracking-normal">TM</sup>
-// </span>
+//                   className={`flex items-start font-display font-extrabold tracking-wide text-bamboo-700 transition-all duration-300 ${scrolled ? 'text-xl' : 'text-2xl'}`}
+//                 >
+//                   <span className="truncate">{settings?.websiteName || 'WA-KRITI'}</span>
+//                   <sup className="ml-0.5 mt-0.5 text-[9px] font-semibold leading-none tracking-normal">TM</sup>
+//                 </span>
 //                 <span className="mt-0.5 max-w-[11rem] truncate text-[10px] font-medium tracking-wide text-earth-500 sm:max-w-[16rem] sm:whitespace-normal sm:leading-snug">
 //                   {settings?.tagline || 'Wa-Kriti Premium Bamboo Living Products'}
 //                 </span>
@@ -159,10 +162,11 @@
 //           </div>
 
 //           {/* Right cell */}
-//           <div className="flex shrink-0 items-center justify-end gap-1.5">
+//           <div className="flex shrink-0 items-center justify-end gap-0.5 sm:gap-1.5">
+//             {/* Search toggle: desktop/tablet only (mobile has an always-visible search bar) */}
 //             <button
 //               onClick={() => setSearchOpen((o) => !o)}
-//               className={`flex h-9 w-9 items-center justify-center rounded-full transition-all duration-300 ${
+//               className={`hidden h-9 w-9 items-center justify-center rounded-full transition-all duration-300 sm:flex ${
 //                 searchOpen ? 'bg-bamboo-700 text-white' : 'text-bamboo-600 hover:bg-sand-100'
 //               }`}
 //               aria-label="Search"
@@ -170,12 +174,9 @@
 //               <FiSearch size={17} className={`transition-transform duration-300 ${searchOpen ? 'rotate-90' : ''}`} />
 //             </button>
 
-
-            
-
 //             <Link
 //               to="/wishlist"
-//               className="relative hidden h-9 w-9 items-center justify-center rounded-full text-bamboo-600 hover:bg-sand-100 sm:flex"
+//               className="relative flex h-9 w-9 items-center justify-center rounded-full text-bamboo-600 hover:bg-sand-100"
 //               aria-label="Wishlist"
 //             >
 //               <FiHeart size={17} />
@@ -275,15 +276,52 @@
 //                 </div>
 //               </div>
 //             ) : (
-//               <Link
-//                 to="/login"
-//                 className="ml-1 hidden rounded-full bg-bamboo-700 px-4 py-2 text-xs font-semibold text-white hover:bg-bamboo-800 active:scale-95 sm:block"
-//               >
-//                 Login
-//               </Link>
+//               <>
+//                 <Link
+//                   to="/login"
+//                   className="ml-1 hidden rounded-full bg-bamboo-700 px-4 py-2 text-xs font-semibold text-white hover:bg-bamboo-800 active:scale-95 sm:block"
+//                 >
+//                   Login
+//                 </Link>
+//                 {/* Mobile-only login icon */}
+//                 <Link
+//                   to="/login"
+//                   aria-label="Login"
+//                   className="flex h-9 w-9 items-center justify-center rounded-full text-bamboo-600 hover:bg-sand-100 sm:hidden"
+//                 >
+//                   <FiUser size={18} />
+//                 </Link>
+//               </>
 //             )}
 //           </div>
 //         </div>
+
+//         {/* ── Mobile search bar (mobile only, always visible) ── */}
+//         <form onSubmit={handleSearchSubmit} className="px-4 pb-2.5 pt-1 sm:hidden">
+//           <div className="relative">
+//             <FiSearch size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-bamboo-400" />
+//             <input
+//               ref={mobileSearchRef}
+//               value={searchQuery}
+//               onChange={(e) => setSearchQuery(e.target.value)}
+//               placeholder="Search for bamboo products..."
+//               className="w-full rounded-lg border border-sand-200 bg-sand-50 py-2.5 pl-10 pr-10 text-sm text-bamboo-800 outline-none focus:border-bamboo-400 focus:bg-white focus:ring-2 focus:ring-bamboo-100"
+//             />
+//             {searchQuery && (
+//               <button
+//                 type="button"
+//                 onClick={() => {
+//                   setSearchQuery('');
+//                   mobileSearchRef.current?.focus();
+//                 }}
+//                 aria-label="Clear search"
+//                 className="absolute right-3 top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full bg-bamboo-100 text-bamboo-500"
+//               >
+//                 <FiX size={12} />
+//               </button>
+//             )}
+//           </div>
+//         </form>
 
 //         {/* ── Secondary link row ── */}
 //         <nav className="mx-auto hidden max-w-7xl items-center justify-center gap-0 border-t border-sand-200/80 px-8 pt-4 lg:flex">
@@ -389,12 +427,12 @@
 //             </motion.div>
 //           )}
 //         </AnimatePresence>,
-//         document.body  
+//         document.body
 //       )}
 
-//       {/* ── Search reveal ── */}
+//       {/* ── Search reveal (tablet/desktop only) ── */}
 //       <div
-//         className={`overflow-hidden border-t transition-all duration-300 ease-out ${
+//         className={`hidden overflow-hidden border-t transition-all duration-300 ease-out sm:block ${
 //           searchOpen ? 'max-h-24 border-sand-200 bg-sand-50 opacity-100' : 'max-h-0 border-t-0 opacity-0'
 //         }`}
 //       >
@@ -625,6 +663,7 @@
 // export default Navbar;
 
 
+
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, useNavigate } from 'react-router-dom';
@@ -753,7 +792,7 @@ const Navbar = () => {
       <div className={`bg-white transition-[padding] duration-300 ${scrolled ? 'py-2.5' : 'py-2 sm:py-4'}`}>
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 px-4 sm:gap-4 lg:px-8">
           {/* Left cell — mobile menu + logo + brand + tagline */}
-          <div className="flex min-w-0 items-center gap-3">
+          <div className="flex min-w-0 flex-1 items-center gap-1.5 sm:flex-none sm:gap-3">
             <button
               onClick={() => setMobileOpen(true)}
               className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-bamboo-700 hover:bg-sand-100 lg:hidden"
@@ -762,7 +801,7 @@ const Navbar = () => {
               <FiMenu size={20} />
             </button>
 
-            <Link to="/" className="flex min-w-0 items-center gap-3">
+            <Link to="/" className="flex min-w-0 items-center gap-2 sm:gap-3">
               {settings?.logo?.url && (
                 <img
                   src={settings.logo.url}
@@ -771,15 +810,17 @@ const Navbar = () => {
                 />
               )}
 
-              {/* Brand text + tagline: hidden on mobile when a logo exists */}
-              <div className={`min-w-0 flex-col justify-center leading-tight ${settings?.logo?.url ? 'hidden sm:flex' : 'flex'}`}>
+              {/* Brand text + tagline: now visible on mobile too, placed right next to the logo (same as desktop) */}
+              <div className="flex min-w-0 flex-col justify-center leading-tight">
                 <span
-                  className={`flex items-start font-display font-extrabold tracking-wide text-bamboo-700 transition-all duration-300 ${scrolled ? 'text-xl' : 'text-2xl'}`}
+                  className={`flex items-start font-display font-extrabold tracking-wide text-bamboo-700 transition-all duration-300 ${
+                    scrolled ? 'text-base sm:text-xl' : 'text-lg sm:text-2xl'
+                  }`}
                 >
                   <span className="truncate">{settings?.websiteName || 'WA-KRITI'}</span>
-                  <sup className="ml-0.5 mt-0.5 text-[9px] font-semibold leading-none tracking-normal">TM</sup>
+                  <sup className="ml-0.5 mt-0.5 text-[8px] font-semibold leading-none tracking-normal sm:text-[9px]">TM</sup>
                 </span>
-                <span className="mt-0.5 max-w-[11rem] truncate text-[10px] font-medium tracking-wide text-earth-500 sm:max-w-[16rem] sm:whitespace-normal sm:leading-snug">
+                <span className="mt-0.5 line-clamp-2 max-w-[8.5rem] text-[9px] font-medium leading-tight tracking-wide text-earth-500 sm:line-clamp-none sm:max-w-[16rem] sm:text-[10px] sm:leading-snug">
                   {settings?.tagline || 'Wa-Kriti Premium Bamboo Living Products'}
                 </span>
               </div>
@@ -814,13 +855,18 @@ const Navbar = () => {
 
             <Link
               to="/cart"
-              className="flex items-center gap-1.5 rounded-full border border-bamboo-200 px-3 py-1.5 text-xs font-semibold text-bamboo-700 hover:border-bamboo-700 hover:bg-bamboo-700 hover:text-white"
+              className="flex items-center gap-1.5 rounded-full border border-bamboo-200 px-2.5 py-1.5 text-xs font-semibold text-bamboo-700 hover:border-bamboo-700 hover:bg-bamboo-700 hover:text-white sm:px-3"
             >
               <FiShoppingBag size={15} />
               <span>{cartItems.length}</span>
             </Link>
 
-            {isAuthenticated && <NotificationBell />}
+            {/* Notification bell: hidden on mobile, desktop/tablet only */}
+            {isAuthenticated && (
+              <div className="hidden sm:block">
+                <NotificationBell />
+              </div>
+            )}
 
             {isAuthenticated ? (
               <div className="relative" ref={profileRef}>
