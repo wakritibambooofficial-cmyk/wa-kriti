@@ -10,6 +10,13 @@ import { store } from './store/store';
 import App from './App';
 import './index.css';
 
+if (import.meta.env.PROD) {
+  ['log', 'info', 'warn', 'error', 'debug'].forEach((m) => {
+    console[m] = () => {};
+  });
+}
+
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
