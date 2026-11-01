@@ -830,7 +830,6 @@
 //   finalizeSuccessfulOrder,
 // };
 
-
 const crypto = require('crypto');
 const Order = require('../models/Order');
 const Cart = require('../models/Cart');
@@ -1188,10 +1187,14 @@ const finalizeSuccessfulOrder = async (order, user, { clearCart = true } = {}) =
   });
 
   if (user?.email) {
+    // Pass the whole order so the email can show product images, variants,
+    // prices and the full checkout breakdown (subtotal, shipping, taxes,
+    // total, paid today, shipping address, payment method).
     sendOrderStatusEmail(user.email, {
       firstName: user.firstName,
       orderNumber: order.orderNumber,
       status: 'placed',
+      order,
     }).catch((e) => logger.error(e.message));
   }
 
@@ -1314,6 +1317,10 @@ const initiateCheckout = asyncHandler(async (req, res) => {
     name: i.name,
     image: i.image,
     sku: i.sku,
+    // Human-readable variant, e.g. "Straight / Pack of 2". Saved on the
+    // order so the confirmation email / invoice can show it. The field
+    // name on the cart item may differ in your Cart model — see notes.
+    variantLabel: i.variantLabel || i.variantName || i.variantTitle || '',
     price: i.price,
     quantity: i.quantity,
     subtotal: i.price * i.quantity,
