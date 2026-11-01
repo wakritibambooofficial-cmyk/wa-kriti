@@ -916,7 +916,7 @@ const buildLabelHTML = (orders) => {
         <div class="block">
           <p class="label-sm">FROM</p>
           <p>Wa-Kriti Fulfillment Center</p>
-          <p class="muted">Ghaziabad, Uttar Pradesh, India</p>
+          <p class="muted">Agartala, Tripura, India</p>
         </div>
         <div class="block">
           <p class="label-sm">TO</p>
