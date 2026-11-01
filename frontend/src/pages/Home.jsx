@@ -842,7 +842,6 @@
 
 
 
-
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -995,19 +994,28 @@ const SlideContent = ({ banner }) => {
   const typed = useTypewriterLoop(isActive ? banner.description : '');
 
   return (
-    <div className="relative w-full flex-none bg-white px-4 pb-10 pt-4 text-left text-black sm:mx-auto sm:max-w-lg sm:flex-none sm:bg-transparent sm:p-0 sm:text-center sm:text-white">
+    <div className="relative z-10 -mt-6 w-full flex-none overflow-hidden rounded-t-[1.75rem] bg-gradient-to-b from-white to-sand-50 px-5 pb-10 pt-5 text-left text-black shadow-[0_-10px_28px_-12px_rgba(0,0,0,0.35)] sm:z-auto sm:mx-auto sm:mt-0 sm:max-w-lg sm:flex-none sm:overflow-visible sm:rounded-none sm:bg-none sm:p-0 sm:text-center sm:text-white sm:shadow-none">
+      {/* Mobile-only decorative glows */}
+      <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-bamboo-200/50 blur-2xl sm:hidden" />
+      <div className="pointer-events-none absolute -left-8 bottom-0 h-24 w-24 rounded-full bg-earth-300/30 blur-2xl sm:hidden" />
+
       {/* Eyebrow: desktop only (unchanged) */}
       <div className="hidden sm:block">
         <Eyebrow text={banner.subtitle} />
       </div>
 
-      {/* Mobile-only small label (fixed height so layout never shifts) */}
-      <p className="h-4 truncate text-[10px] font-semibold uppercase tracking-[0.2em] text-black/60 sm:hidden">
-        {banner.subtitle}
-      </p>
+      {/* Mobile-only pill label (fixed-height slot so layout never shifts) */}
+      <div className="relative flex h-6 items-center sm:hidden">
+        {banner.subtitle && (
+          <span className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-bamboo-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.15em] text-bamboo-800 ring-1 ring-bamboo-200">
+            <span className="h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-earth-500" />
+            <span className="truncate">{banner.subtitle}</span>
+          </span>
+        )}
+      </div>
 
       {/* Title: fixed 2-line slot on mobile */}
-      <div className="mt-1 h-[3.5rem] overflow-hidden sm:mt-4 sm:h-auto sm:overflow-visible">
+      <div className="relative mt-2 h-[3.5rem] overflow-hidden sm:mt-4 sm:h-auto sm:overflow-visible">
         <AnimatedHeadline
           key={banner._id}
           text={banner.title}
@@ -1015,25 +1023,31 @@ const SlideContent = ({ banner }) => {
         />
       </div>
 
+      {/* Mobile-only accent bar */}
+      <div className="relative mt-1.5 h-1 w-12 rounded-full bg-gradient-to-r from-bamboo-600 to-earth-500 sm:hidden" />
+
       {/* Description: typewriter on both; fixed-height slot on mobile */}
-      <p className="mt-2 h-[5.75rem] overflow-hidden text-sm leading-relaxed text-black sm:mt-3 sm:h-auto sm:min-h-[3.5rem] sm:text-base sm:text-sand-100/90 sm:drop-shadow-sm">
+      <p className="relative mt-3 h-[5.75rem] overflow-hidden border-l-2 border-bamboo-200 pl-3 text-sm leading-relaxed text-gray-800 sm:mt-3 sm:h-auto sm:min-h-[3.5rem] sm:border-0 sm:p-0 sm:text-base sm:text-sand-100/90 sm:drop-shadow-sm">
         {typed}
-        <span className="wk-cursor ml-0.5 inline-block w-[2px] translate-y-[2px] bg-black sm:bg-white/90" style={{ height: '1em' }} />
+        <span className="wk-cursor ml-0.5 inline-block w-[2px] translate-y-[2px] bg-bamboo-700 sm:bg-white/90" style={{ height: '1em' }} />
       </p>
 
-      <div className="mt-3 flex gap-2.5 sm:mt-7 sm:justify-center sm:gap-3">
+      <div className="relative mt-3 flex gap-2.5 sm:mt-7 sm:justify-center sm:gap-3">
         {banner.ctaPrimaryLabel && (
           <CtaButton
             to={banner.ctaPrimaryLink || '/shop'}
-            className="btn-primary flex-1 px-4 py-2.5 text-center text-sm hover:shadow-xl hover:shadow-bamboo-900/40 sm:flex-none sm:px-6 sm:py-3"
+            className="btn-primary flex-1 rounded-xl px-4 py-3 text-center text-sm font-semibold shadow-lg shadow-bamboo-900/20 hover:shadow-xl hover:shadow-bamboo-900/40 sm:flex-none sm:px-6"
           >
-            {banner.ctaPrimaryLabel}
+            <span className="inline-flex items-center justify-center gap-1.5">
+              {banner.ctaPrimaryLabel}
+              <FiArrowRight size={14} className="sm:hidden" />
+            </span>
           </CtaButton>
         )}
         {banner.ctaSecondaryLabel && (
           <CtaButton
             to={banner.ctaSecondaryLink || '/shop'}
-            className="inline-flex flex-1 items-center justify-center rounded-xl border border-black/30 px-4 py-2.5 text-center text-sm font-semibold text-black hover:border-black/60 hover:bg-black/5 sm:flex-none sm:border-white/40 sm:px-6 sm:py-3 sm:text-white sm:hover:border-white/70 sm:hover:bg-white/10 sm:hover:shadow-lg sm:hover:shadow-black/20"
+            className="inline-flex flex-1 items-center justify-center rounded-xl border-[1.5px] border-bamboo-700 bg-white px-4 py-3 text-center text-sm font-semibold text-bamboo-800 hover:bg-bamboo-50 sm:flex-none sm:border sm:border-white/40 sm:bg-transparent sm:px-6 sm:text-white sm:hover:border-white/70 sm:hover:bg-white/10 sm:hover:shadow-lg sm:hover:shadow-black/20"
           >
             {banner.ctaSecondaryLabel}
           </CtaButton>
