@@ -661,9 +661,6 @@
 // };
 
 // export default Navbar;
-
-
-
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, useNavigate } from 'react-router-dom';
@@ -814,14 +811,27 @@ const Navbar = () => {
               <div className="flex min-w-0 flex-col justify-center leading-tight">
                 <span
                   className={`flex items-start font-display font-extrabold tracking-wide text-bamboo-700 transition-all duration-300 ${
-                    scrolled ? 'text-base sm:text-xl' : 'text-lg sm:text-2xl'
+                    scrolled ? 'text-sm sm:text-xl' : 'text-[15px] sm:text-2xl'
                   }`}
                 >
                   <span className="truncate">{settings?.websiteName || 'WA-KRITI'}</span>
-                  <sup className="ml-0.5 mt-0.5 text-[8px] font-semibold leading-none tracking-normal sm:text-[9px]">TM</sup>
+                  <sup className="ml-0.5 mt-0.5 text-[7px] font-semibold leading-none tracking-normal sm:text-[9px]">TM</sup>
                 </span>
-                <span className="mt-0.5 line-clamp-2 max-w-[8.5rem] text-[9px] font-medium leading-tight tracking-wide text-earth-500 sm:line-clamp-none sm:max-w-[16rem] sm:text-[10px] sm:leading-snug">
-                  {settings?.tagline || 'Wa-Kriti Premium Bamboo Living Products'}
+                {/* Tagline: on mobile breaks into two lines ("Crafted by nature" / "and woven with bamboo"); single flow on desktop */}
+                <span className="mt-0.5 hidden max-w-[10rem] text-[9px] font-medium leading-tight tracking-wide text-earth-500 sm:block sm:max-w-[16rem] sm:text-[10px] sm:leading-snug">
+                  {(() => {
+                    const tagline = settings?.tagline || 'Crafted by nature and woven with bamboo';
+                    const idx = tagline.search(/\sand\s/i);
+                    if (idx === -1) return tagline;
+                    return (
+                      <>
+                        {tagline.slice(0, idx)}
+                        <br className="sm:hidden" />
+                        <span className="hidden sm:inline"> </span>
+                        {tagline.slice(idx + 1)}
+                      </>
+                    );
+                  })()}
                 </span>
               </div>
             </Link>
