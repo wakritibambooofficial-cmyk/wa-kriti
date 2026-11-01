@@ -837,6 +837,12 @@
 // };
 
 // export default Home;
+
+
+
+
+
+
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -928,6 +934,11 @@ const GlobalHeroStyles = () => (
     .wk-cursor {
       animation: wk-blink 0.9s steps(1) infinite;
     }
+    /* Mobile only: dark pagination dots because the text panel is white */
+    @media (max-width: 639px) {
+      .wk-hero-swiper .swiper-pagination-bullet { background: #000; opacity: 0.25; }
+      .wk-hero-swiper .swiper-pagination-bullet-active { background: #000; opacity: 1; }
+    }
   `}</style>
 );
 
@@ -984,37 +995,33 @@ const SlideContent = ({ banner }) => {
   const typed = useTypewriterLoop(isActive ? banner.description : '');
 
   return (
-    <div className="relative w-full flex-1 bg-bamboo-800 px-4 pb-10 pt-4 text-left text-white sm:mx-auto sm:max-w-lg sm:flex-none sm:bg-transparent sm:p-0 sm:text-center">
+    <div className="relative w-full flex-none bg-white px-4 pb-10 pt-4 text-left text-black sm:mx-auto sm:max-w-lg sm:flex-none sm:bg-transparent sm:p-0 sm:text-center sm:text-white">
       {/* Eyebrow: desktop only (unchanged) */}
       <div className="hidden sm:block">
         <Eyebrow text={banner.subtitle} />
       </div>
 
-      {/* Mobile-only small label */}
-      {banner.subtitle && (
-        <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-sand-300 sm:hidden">
-          {banner.subtitle}
-        </p>
-      )}
-
-      <AnimatedHeadline
-        key={banner._id}
-        text={banner.title}
-        className="font-display text-xl font-bold leading-snug tracking-tight sm:mt-4 sm:line-clamp-2 sm:text-5xl sm:leading-tight sm:drop-shadow-[0_4px_16px_rgba(0,0,0,0.4)]"
-      />
-
-      {/* Mobile: full description, always visible (no typing animation, no clipping) */}
-      {banner.description && (
-        <p className="mt-2 text-sm leading-relaxed text-sand-100/90 sm:hidden">{banner.description}</p>
-      )}
-
-      {/* Desktop: typewriter description (unchanged) */}
-      <p className="hidden min-h-[3.5rem] text-sand-100/90 leading-relaxed drop-shadow-sm sm:mt-3 sm:block sm:text-base">
-        {typed}
-        <span className="wk-cursor ml-0.5 inline-block w-[2px] translate-y-[2px] bg-white/90" style={{ height: '1em' }} />
+      {/* Mobile-only small label (fixed height so layout never shifts) */}
+      <p className="h-4 truncate text-[10px] font-semibold uppercase tracking-[0.2em] text-black/60 sm:hidden">
+        {banner.subtitle}
       </p>
 
-      <div className="mt-4 flex gap-2.5 sm:mt-7 sm:justify-center sm:gap-3">
+      {/* Title: fixed 2-line slot on mobile */}
+      <div className="mt-1 h-[3.5rem] overflow-hidden sm:mt-4 sm:h-auto sm:overflow-visible">
+        <AnimatedHeadline
+          key={banner._id}
+          text={banner.title}
+          className="line-clamp-2 font-display text-xl font-bold leading-snug tracking-tight text-black sm:text-5xl sm:leading-tight sm:text-white sm:drop-shadow-[0_4px_16px_rgba(0,0,0,0.4)]"
+        />
+      </div>
+
+      {/* Description: typewriter on both; fixed-height slot on mobile */}
+      <p className="mt-2 h-[5.75rem] overflow-hidden text-sm leading-relaxed text-black sm:mt-3 sm:h-auto sm:min-h-[3.5rem] sm:text-base sm:text-sand-100/90 sm:drop-shadow-sm">
+        {typed}
+        <span className="wk-cursor ml-0.5 inline-block w-[2px] translate-y-[2px] bg-black sm:bg-white/90" style={{ height: '1em' }} />
+      </p>
+
+      <div className="mt-3 flex gap-2.5 sm:mt-7 sm:justify-center sm:gap-3">
         {banner.ctaPrimaryLabel && (
           <CtaButton
             to={banner.ctaPrimaryLink || '/shop'}
@@ -1026,7 +1033,7 @@ const SlideContent = ({ banner }) => {
         {banner.ctaSecondaryLabel && (
           <CtaButton
             to={banner.ctaSecondaryLink || '/shop'}
-            className="inline-flex flex-1 items-center justify-center rounded-xl border border-white/40 px-4 py-2.5 text-center text-sm font-semibold text-white hover:border-white/70 hover:bg-white/10 hover:shadow-lg hover:shadow-black/20 sm:flex-none sm:px-6 sm:py-3"
+            className="inline-flex flex-1 items-center justify-center rounded-xl border border-black/30 px-4 py-2.5 text-center text-sm font-semibold text-black hover:border-black/60 hover:bg-black/5 sm:flex-none sm:border-white/40 sm:px-6 sm:py-3 sm:text-white sm:hover:border-white/70 sm:hover:bg-white/10 sm:hover:shadow-lg sm:hover:shadow-black/20"
           >
             {banner.ctaSecondaryLabel}
           </CtaButton>
@@ -1105,7 +1112,7 @@ const Hero = () => {
         autoplay={{ delay: 9000 }}
         pagination={{ clickable: true }}
         loop
-        className={BANNER_BOX}
+        className={`${BANNER_BOX} wk-hero-swiper`}
       >
         {banners.map((banner) => (
           <SwiperSlide key={banner._id}>
