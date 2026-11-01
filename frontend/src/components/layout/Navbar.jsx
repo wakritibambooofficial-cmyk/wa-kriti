@@ -661,6 +661,11 @@
 // };
 
 // export default Navbar;
+
+
+
+
+
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, useNavigate } from 'react-router-dom';
@@ -1232,10 +1237,11 @@ const Navbar = () => {
 
                 <div
                   className={`overflow-hidden transition-all duration-300 ease-out ${
-                    mobileShopOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
+                    mobileShopOpen ? 'max-h-[20rem] opacity-100' : 'max-h-0 opacity-0'
                   }`}
                 >
-                  <div className="ml-4 flex flex-col gap-0.5 border-l-2 border-sand-200 py-1 pl-4">
+                  {/* All categories listed; only this list scrolls (not the whole drawer) */}
+                  <div className="wk-cat-scroll ml-4 flex max-h-[19rem] flex-col gap-0.5 overflow-y-auto overscroll-contain border-l-2 border-sand-200 py-1 pl-4 pr-1">
                     {categories.length > 0 ? (
                       categories.map((cat) => (
                         <Link
@@ -1298,6 +1304,16 @@ const Navbar = () => {
           from { transform: scale(0); opacity: 0; }
           to { transform: scale(1); opacity: 1; }
         }
+
+        /* Visible slim scrollbar for the mobile drawer category list */
+        .wk-cat-scroll {
+          scrollbar-width: thin;
+          scrollbar-color: #8fae8a #f1ede4;
+          -webkit-overflow-scrolling: touch;
+        }
+        .wk-cat-scroll::-webkit-scrollbar { width: 4px; }
+        .wk-cat-scroll::-webkit-scrollbar-track { background: #f1ede4; border-radius: 9999px; }
+        .wk-cat-scroll::-webkit-scrollbar-thumb { background: #8fae8a; border-radius: 9999px; }
 
         .nav-link {
           position: relative;
