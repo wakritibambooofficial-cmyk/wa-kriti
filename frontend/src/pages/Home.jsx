@@ -837,7 +837,6 @@
 // };
 
 // export default Home;
-
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -976,34 +975,50 @@ const CtaButton = ({ to, className, children }) => (
   </Link>
 );
 
-/* ── Live slide content: compact text strip on mobile, centered hero on desktop ── */
+/* ── Live slide content:
+      Mobile  -> clean solid text panel BELOW the full banner image (full text, no clipping)
+      Desktop -> centered hero text over the image (unchanged) ── */
 const SlideContent = ({ banner }) => {
   const swiperSlide = useSwiperSlide();
   const isActive = swiperSlide?.isActive ?? true;
   const typed = useTypewriterLoop(isActive ? banner.description : '');
 
   return (
-    <div className="relative mx-auto w-full max-w-lg text-white">
+    <div className="relative w-full flex-1 bg-bamboo-800 px-4 pb-10 pt-4 text-left text-white sm:mx-auto sm:max-w-lg sm:flex-none sm:bg-transparent sm:p-0 sm:text-center">
+      {/* Eyebrow: desktop only (unchanged) */}
       <div className="hidden sm:block">
         <Eyebrow text={banner.subtitle} />
       </div>
 
+      {/* Mobile-only small label */}
+      {banner.subtitle && (
+        <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-sand-300 sm:hidden">
+          {banner.subtitle}
+        </p>
+      )}
+
       <AnimatedHeadline
         key={banner._id}
         text={banner.title}
-        className="line-clamp-2 font-display text-lg font-bold leading-tight tracking-tight drop-shadow-[0_2px_8px_rgba(0,0,0,0.5)] sm:mt-4 sm:text-5xl sm:leading-tight sm:drop-shadow-[0_4px_16px_rgba(0,0,0,0.4)]"
+        className="font-display text-xl font-bold leading-snug tracking-tight sm:mt-4 sm:line-clamp-2 sm:text-5xl sm:leading-tight sm:drop-shadow-[0_4px_16px_rgba(0,0,0,0.4)]"
       />
 
+      {/* Mobile: full description, always visible (no typing animation, no clipping) */}
+      {banner.description && (
+        <p className="mt-2 text-sm leading-relaxed text-sand-100/90 sm:hidden">{banner.description}</p>
+      )}
+
+      {/* Desktop: typewriter description (unchanged) */}
       <p className="hidden min-h-[3.5rem] text-sand-100/90 leading-relaxed drop-shadow-sm sm:mt-3 sm:block sm:text-base">
         {typed}
         <span className="wk-cursor ml-0.5 inline-block w-[2px] translate-y-[2px] bg-white/90" style={{ height: '1em' }} />
       </p>
 
-      <div className="mt-2.5 flex gap-2 sm:mt-7 sm:justify-center sm:gap-3">
+      <div className="mt-4 flex gap-2.5 sm:mt-7 sm:justify-center sm:gap-3">
         {banner.ctaPrimaryLabel && (
           <CtaButton
             to={banner.ctaPrimaryLink || '/shop'}
-            className="btn-primary px-4 py-2 text-xs hover:shadow-xl hover:shadow-bamboo-900/40 sm:px-6 sm:py-3 sm:text-sm"
+            className="btn-primary flex-1 px-4 py-2.5 text-center text-sm hover:shadow-xl hover:shadow-bamboo-900/40 sm:flex-none sm:px-6 sm:py-3"
           >
             {banner.ctaPrimaryLabel}
           </CtaButton>
@@ -1011,7 +1026,7 @@ const SlideContent = ({ banner }) => {
         {banner.ctaSecondaryLabel && (
           <CtaButton
             to={banner.ctaSecondaryLink || '/shop'}
-            className="hidden rounded-xl border border-white/40 px-6 py-3 text-sm font-semibold text-white hover:border-white/70 hover:bg-white/10 hover:shadow-lg hover:shadow-black/20 sm:inline-flex"
+            className="inline-flex flex-1 items-center justify-center rounded-xl border border-white/40 px-4 py-2.5 text-center text-sm font-semibold text-white hover:border-white/70 hover:bg-white/10 hover:shadow-lg hover:shadow-black/20 sm:flex-none sm:px-6 sm:py-3"
           >
             {banner.ctaSecondaryLabel}
           </CtaButton>
@@ -1024,8 +1039,9 @@ const SlideContent = ({ banner }) => {
 const FALLBACK_DESCRIPTION =
   'Discover handcrafted bamboo furniture, decor, and lifestyle products made by skilled artisans.';
 
-// Mobile: wide banner (Amazon/Flipkart style). Desktop: original full-height hero.
-const BANNER_BOX = 'relative w-full aspect-[16/10] sm:aspect-auto sm:h-[85vh]';
+// Mobile: height comes from the full (uncropped) banner image + text panel. Desktop: original full-height hero.
+const BANNER_BOX = 'relative w-full sm:h-[85vh]';
+const SKELETON_BOX = 'relative w-full aspect-[16/10] sm:aspect-auto sm:h-[85vh]';
 const FALLBACK_BOX = 'relative flex w-full min-h-[420px] sm:h-[85vh] sm:min-h-0';
 
 const Hero = () => {
@@ -1038,7 +1054,7 @@ const Hero = () => {
   // Hooks must run unconditionally every render
   const typedFallback = useTypewriterLoop(!isLoading && banners.length === 0 ? FALLBACK_DESCRIPTION : '');
 
-  if (isLoading) return <div className={`${BANNER_BOX} animate-pulse bg-sand-200`} />;
+  if (isLoading) return <div className={`${SKELETON_BOX} animate-pulse bg-sand-200`} />;
 
   if (!banners.length) {
     return (
@@ -1093,14 +1109,23 @@ const Hero = () => {
       >
         {banners.map((banner) => (
           <SwiperSlide key={banner._id}>
-            {/* Mobile: image fills the box, text sits in a dark strip at the bottom.
-                Desktop: centered text over the image, as before. */}
-            <div className="relative flex h-full w-full items-end overflow-hidden px-4 pb-10 text-left sm:items-center sm:justify-center sm:px-16 sm:pb-0 sm:text-center">
+            {/* Mobile: full banner image (nothing cropped) on top, text panel below.
+                Desktop: centered text over a cover image, as before. */}
+            <div className="flex h-full w-full flex-col sm:relative sm:flex-row sm:items-center sm:justify-center sm:overflow-hidden sm:px-16 sm:text-center">
+              {/* Mobile image: natural aspect ratio, fully visible */}
+              <img
+                src={banner.image.url}
+                alt={banner.title}
+                className="block h-auto w-full sm:hidden"
+              />
+
+              {/* Desktop background image + overlay (unchanged) */}
               <div
-                className="wk-kenburns absolute inset-0 bg-cover bg-center"
+                className="wk-kenburns absolute inset-0 hidden bg-cover bg-center sm:block"
                 style={{ backgroundImage: `url(${banner.image.url})` }}
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/30 to-transparent sm:bg-gradient-to-t sm:from-black/60 sm:via-black/35 sm:to-black/25" />
+              <div className="absolute inset-0 hidden sm:block sm:bg-gradient-to-t sm:from-black/60 sm:via-black/35 sm:to-black/25" />
+
               <SlideContent banner={banner} />
             </div>
           </SwiperSlide>
