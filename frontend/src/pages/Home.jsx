@@ -839,9 +839,6 @@
 // export default Home;
 
 
-
-
-
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -994,7 +991,10 @@ const SlideContent = ({ banner }) => {
   const typed = useTypewriterLoop(isActive ? banner.description : '');
 
   return (
-    <div className="relative z-10 -mt-6 w-full flex-none overflow-hidden rounded-t-[1.75rem] bg-gradient-to-b from-white to-sand-50 px-5 pb-10 pt-5 text-left text-black shadow-[0_-10px_28px_-12px_rgba(0,0,0,0.35)] sm:z-auto sm:mx-auto sm:mt-0 sm:max-w-lg sm:flex-none sm:overflow-visible sm:rounded-none sm:bg-none sm:p-0 sm:text-center sm:text-white sm:shadow-none">
+    <div className="relative w-full flex-none overflow-hidden bg-gradient-to-b from-white to-sand-50 px-5 pb-10 pt-5 text-left text-black sm:mx-auto sm:max-w-lg sm:flex-none sm:overflow-visible sm:bg-none sm:p-0 sm:text-center sm:text-white">
+      {/* Mobile-only top accent strip (sits below the image, never covers it) */}
+      <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-bamboo-600 via-earth-500 to-bamboo-600 sm:hidden" />
+
       {/* Mobile-only decorative glows */}
       <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-bamboo-200/50 blur-2xl sm:hidden" />
       <div className="pointer-events-none absolute -left-8 bottom-0 h-24 w-24 rounded-full bg-earth-300/30 blur-2xl sm:hidden" />
