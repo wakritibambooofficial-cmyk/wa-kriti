@@ -1333,24 +1333,30 @@ const Navbar = () => {
           width: 100%;
         }
 
-        /* Animated color-shifting background for the Festive Gifting panel */
+        /* Festive Gifting panel — background image from /public/festive-back.png */
         .festive-panel {
-          background-image: linear-gradient(
-            120deg,
-            #3f6b3f 0%,
-            #6ea05e 25%,
-            #d9a441 50%,
-            #b8622f 75%,
-            #3f6b3f 100%
-          );
-          background-size: 300% 300%;
-          animation: festiveShift 8s ease infinite;
+          background-image: url('/festive-back.png');
+          background-size: cover;
+          background-position: center;
+          background-repeat: no-repeat;
         }
 
-        @keyframes festiveShift {
-          0% { background-position: 0% 50%; }
-          50% { background-position: 100% 50%; }
-          100% { background-position: 0% 50%; }
+        /* Dark overlay so the white text stays readable on top of the image */
+        .festive-panel::before {
+          content: '';
+          position: absolute;
+          inset: 0;
+          background: linear-gradient(90deg, rgba(0, 0, 0, 0.55) 0%, rgba(0, 0, 0, 0.25) 100%);
+          transition: background 0.3s ease;
+        }
+        .festive-panel:hover::before {
+          background: linear-gradient(90deg, rgba(0, 0, 0, 0.45) 0%, rgba(0, 0, 0, 0.15) 100%);
+        }
+
+        /* Keep the text above the overlay */
+        .festive-panel > * {
+          position: relative;
+          z-index: 1;
         }
       `}</style>
     </header>
