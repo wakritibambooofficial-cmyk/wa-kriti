@@ -80,6 +80,14 @@ app.get('/', (req, res) => {
   });
 });
 
+app.get("/api/health", (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: "Wa-Kriti API is running",
+    timestamp: new Date().toISOString()
+  });
+});
+
 // 404 + Error handling (must be last)
 app.use(notFoundHandler);
 app.use(errorHandler);
