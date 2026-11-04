@@ -745,9 +745,9 @@ const MENU = [
   },
 ];
 
-const SUPPORT_EMAIL = 'support@wakriti.com';
+const SUPPORT_EMAIL = 'wakriti.bambooofficial@gmail.com';
 // Fallback WhatsApp number (used if CMS settings don't return one). Assumed India (+91) — update if different.
-const DEFAULT_WHATSAPP_NUMBER = '914545454545';
+const DEFAULT_WHATSAPP_NUMBER = '9366431377';
 
 const ASSISTANT_NAME = 'Wa-Kriti Assistant';
 const GREETING = 'Hi! Welcome to Wa-Kriti \uD83D\uDC4B\nHow can I help you today?';
