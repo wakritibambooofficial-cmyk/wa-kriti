@@ -404,7 +404,6 @@
 // export default Shop;
 
 
-
 import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -710,14 +709,16 @@ const Shop = () => {
           )}
         </AnimatePresence>
 
-        <div className="flex gap-8">
+        {/* FIX: gap only on lg+. On mobile the empty drawer wrapper was still a flex child,
+            and gap-8 added 2rem of space that pushed the product grid to the right. */}
+        <div className="flex lg:gap-8">
           {/* Desktop collapsible column — collapses to 0 width, grid takes the space back */}
           <motion.div
             initial={false}
             animate={{
               width: isSidebarOpen ? 256 : 0,
               opacity: isSidebarOpen ? 1 : 0,
-              marginRight: isSidebarOpen ? 0 : -32, // cancels the parent's gap-8 (2rem) when collapsed
+              marginRight: isSidebarOpen ? 0 : -32, // cancels the parent's lg:gap-8 (2rem) when collapsed
             }}
             transition={{ duration: 0.3, ease: 'easeInOut' }}
             className="hidden shrink-0 overflow-hidden lg:block"
