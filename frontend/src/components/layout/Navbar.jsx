@@ -1335,11 +1335,12 @@ const Navbar = () => {
 
         /* Festive Gifting panel — background image from /public/festive-back.png */
         .festive-panel {
-          background-image: url('/festive-back.png');
-          background-size: cover;
-          background-position: center;
-          background-repeat: no-repeat;
-        }
+  background-image: url('/festive-back.png');
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-color: #3f6b3f; /* fills any empty space; match your image's edge color */
+}
 
         /* Dark overlay so the white text stays readable on top of the image */
         .festive-panel::before {
