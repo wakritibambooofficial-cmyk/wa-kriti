@@ -172,7 +172,7 @@ const SOCIAL_LINKS_CONFIG = [
   { key: 'instagram', icon: FiInstagram, label: 'Instagram' },
   { key: 'facebook', icon: FiFacebook, label: 'Facebook' },
   { key: 'youtube', icon: FiYoutube, label: 'YouTube' },
-  // { key: 'linkedin', icon: FiLinkedin, label: 'LinkedIn' },
+   { key: 'linkedin', icon: FiLinkedin, label: 'LinkedIn' },
   // { key: 'pinterest', icon: FaPinterestP, label: 'Pinterest' },
 ];
 
