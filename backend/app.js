@@ -28,12 +28,23 @@ app.set('trust proxy', 1);
 app.use(helmet());
 
 // CORS
-app.use(
-  cors({
-    origin: process.env.CLIENT_URL || 'http://localhost:5173',
-    credentials: true,
-  })
-);
+// app.use(
+//   cors({
+//     origin: process.env.CLIENT_URL || 'http://localhost:5173',
+//     credentials: true,
+//   })
+// );
+const allowedOrigins = [
+  process.env.CLIENT_URL,
+  "https://wakriti.com",
+  "https://www.wakriti.com",
+  "https://wa-kriti.vercel.app"
+];
+
+app.use(cors({
+  origin: allowedOrigins,
+  credentials: true
+}));
 
 app.use('/api/webhooks', webhookRoutes);
 

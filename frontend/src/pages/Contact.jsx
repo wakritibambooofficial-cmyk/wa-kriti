@@ -180,10 +180,10 @@ const Contact = () => {
               <ContactInfoCard icon={FiMapPin} label="Address" value={settings?.address || 'India'} />
             </motion.div>
             <motion.div initial="hidden" animate="visible" custom={0.3} variants={fadeUp}>
-              <ContactInfoCard icon={FiPhone} label="Phone" value={settings?.contactPhone || '+91 00000 00000'} />
+              <ContactInfoCard icon={FiPhone} label="Phone" value={settings?.contactPhone || '+91 9366431377'} />
             </motion.div>
             <motion.div initial="hidden" animate="visible" custom={0.4} variants={fadeUp}>
-              <ContactInfoCard icon={FiMail} label="Email" value={settings?.contactEmail || 'support@wakriti.com'} />
+              <ContactInfoCard icon={FiMail} label="Email" value={settings?.contactEmail || 'wakriti.bambooofficial@gmail.com'} />
             </motion.div>
 
             <motion.div initial="hidden" animate="visible" custom={0.5} variants={fadeUp}>
