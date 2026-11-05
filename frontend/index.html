@@ -1,6 +1,12 @@
 <!doctype html>
 <html lang="en">
   <head>
+    <script>
+    (function () {
+      var noop = function () {};
+      ["log","info","debug","warn","error","table","trace","dir","group","groupEnd","time","timeEnd"].forEach(function (m) { console[m] = noop; });
+    })();
+  </script>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/logo.png" />
     <link rel="manifest" href="/manifest.json" />
