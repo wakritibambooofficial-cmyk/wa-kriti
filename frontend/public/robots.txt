@@ -1,8 +1,9 @@
 User-agent: *
 Allow: /
+
 Disallow: /dashboard
 Disallow: /admin
 Disallow: /checkout
 Disallow: /cart
 
-Sitemap: /sitemap.xml
+Sitemap: https://wakriti.com/sitemap.xml
