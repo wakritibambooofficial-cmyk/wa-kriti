@@ -204,6 +204,7 @@ const correctSearchQuery = async (query, baseFilter = {}) => {
   // remaining filters to determine which products are relevant candidates.
   const candidateFilter = { ...baseFilter };
   delete candidateFilter.$text;
+   delete candidateFilter.$and;
 
   const [names, tags, searchKeywords] = await Promise.all([
     Product.distinct('name', candidateFilter),
@@ -414,10 +415,20 @@ const buildProductFilter = (query) => {
   }
 
   // Normal MongoDB text search.
-  if (q) {
-    filter.$text = {
-      $search: q,
-    };
+   // Search by name or SKU (partial, case-insensitive).
+  if (q && q.trim()) {
+    const words = q.trim().split(/\s+/).filter(Boolean);
+
+    filter.$and = words.map((word) => {
+      const rx = new RegExp(escapeRegex(word), 'i');
+      return {
+        $or: [
+          { name: rx },
+          { sku: rx },
+          { 'variants.sku': rx },
+        ],
+      };
+    });
   }
 
   return filter;
